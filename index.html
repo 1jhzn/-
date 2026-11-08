@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>오목 게임 (Gomoku)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="game-container">
+    <header class="game-header">
+      <h1>⚪ 오목 게임 (Gomoku) ⚫</h1>
+      <div class="status-panel">
+        <div class="turn-indicator">
+          <span class="stone-icon" id="turnStone"></span>
+          <span id="turnText">흑돌 차례</span>
+        </div>
+        <div class="game-mode">
+          <label>
+            <input type="radio" name="mode" value="pve" checked> 혼자 하기 (AI)
+          </label>
+          <label>
+            <input type="radio" name="mode" value="pvp"> 2인 대전
+          </label>
+        </div>
+      </div>
+    </header>
+
+    <main class="board-wrapper">
+      <canvas id="omokCanvas" width="600" height="600"></canvas>
+    </main>
+
+    <footer class="controls">
+      <button id="undoBtn" class="btn btn-secondary">한 수 무르기</button>
+      <button id="restartBtn" class="btn btn-primary">새 게임</button>
+    </footer>
+
+    <!-- 승리 모달 -->
+    <div id="winnerModal" class="modal">
+      <div class="modal-content">
+        <h2 id="winnerText">흑돌 승리! 🎉</h2>
+        <p id="winnerDesc">5목을 완성했습니다.</p>
+        <button id="modalRestartBtn" class="btn btn-primary">다시 시작하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

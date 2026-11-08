@@ -1,5 +1,156 @@
 <!DOCTYPE html>
-<meta charset="utf-8" />
-<title>피카츄 배구 온라인</title>
-<meta http-equiv="refresh" content="0; URL=./ko/" />
-<link rel="canonical" href="./ko/" />
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>⚡ 피카츄 배구 온라인</title>
+  <link rel="stylesheet" href="style.css?v=3">
+  <script src="paho-mqtt.js"></script>
+</head>
+<body>
+  <div id="game-app">
+    <!-- Top Bar -->
+    <header id="top-bar">
+      <div class="logo">⚡ 피카츄 배구 <span>ONLINE</span></div>
+      <div class="top-controls">
+        <button id="rotate-btn" class="top-btn" title="화면 회전">🔄 회전</button>
+        <button id="sound-btn" class="top-btn">🔊 소리</button>
+      </div>
+    </header>
+
+    <!-- Lobby / Matching Screen -->
+    <div id="lobby-screen" class="screen">
+      <div class="lobby-card">
+        <div class="pikachu-avatar">
+          <svg viewBox="0 0 100 100" class="pika-svg">
+            <!-- Cute Pikachu Face Icon -->
+            <polygon points="15,40 5,5 35,25" fill="#facc15" stroke="#000" stroke-width="2"/>
+            <polygon points="5,5 15,15 8,20" fill="#000"/>
+            <polygon points="85,40 95,5 65,25" fill="#facc15" stroke="#000" stroke-width="2"/>
+            <polygon points="95,5 85,15 92,20" fill="#000"/>
+            <ellipse cx="50" cy="55" rx="35" ry="32" fill="#facc15" stroke="#000" stroke-width="2"/>
+            <circle cx="35" cy="48" r="6" fill="#000"/>
+            <circle cx="37" cy="46" r="2" fill="#fff"/>
+            <circle cx="65" cy="48" r="6" fill="#000"/>
+            <circle cx="67" cy="46" r="2" fill="#fff"/>
+            <circle cx="24" cy="62" r="8" fill="#ef4444"/>
+            <circle cx="76" cy="62" r="8" fill="#ef4444"/>
+            <ellipse cx="50" cy="56" rx="3" ry="2" fill="#000"/>
+            <path d="M42,65 Q50,72 58,65" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h2>피카츄 배구 온라인 🇰🇷</h2>
+        <p class="subtitle">한국 전용 빠른 매칭 & 친구 1:1 대전</p>
+
+        <div class="input-group">
+          <label for="nicknameInput">닉네임</label>
+          <input type="text" id="nicknameInput" value="지훈" maxlength="6">
+        </div>
+
+        <div class="match-actions">
+          <button id="btn-quick-match" class="btn btn-main">
+            <span class="icon">🚀</span>
+            <div class="btn-text">
+              <strong>한국 퀵 매칭</strong>
+              <small>접속 중인 다른 유저와 바로 대전</small>
+            </div>
+          </button>
+
+          <button id="btn-custom-room" class="btn btn-sub">
+            <span class="icon">👥</span>
+            <div class="btn-text">
+              <strong>친구와 1:1 대전</strong>
+              <small>방 만들어서 카톡 링크 공유</small>
+            </div>
+          </button>
+
+          <button id="btn-ai-practice" class="btn btn-minor">
+            <span class="icon">🤖</span>
+            <span>혼자 연습하기 (vs AI)</span>
+          </button>
+        </div>
+
+        <!-- Custom Room Details (Toggle) -->
+        <div id="room-detail-box" style="display: none;">
+          <div class="room-box-inner">
+            <button id="btn-create-room" class="btn btn-primary btn-sm">🔗 내 방 만들기 (링크 복사)</button>
+            <div class="join-row">
+              <input type="text" id="roomCodeInput" placeholder="방 코드 4자리" maxlength="6">
+              <button id="btn-join-room" class="btn btn-secondary btn-sm">입장</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match Waiting Screen -->
+    <div id="waiting-screen" class="screen" style="display: none;">
+      <div class="waiting-card">
+        <div class="spinner"></div>
+        <h3 id="waiting-title">상대방을 찾는 중...</h3>
+        <p id="waiting-desc">한국 서버에서 상대를 검색하고 있습니다.</p>
+        <div id="room-share-area" style="display: none;">
+          <div class="room-code-badge">방 코드: <strong id="display-room-code">-</strong></div>
+          <button id="btn-copy-invite" class="btn btn-share">🔗 초대 링크 복사하기</button>
+          <span id="copy-toast" class="toast-msg">복사 완료! 친구에게 카톡으로 보내세요</span>
+        </div>
+        <button id="btn-cancel-match" class="btn btn-secondary btn-sm">매칭 취소</button>
+      </div>
+    </div>
+
+    <!-- Play Screen -->
+    <div id="play-screen" class="screen" style="display: none;">
+      <!-- Score Board -->
+      <div id="scoreboard">
+        <div class="player-score p1">
+          <span class="p-name" id="p1-name">지훈</span>
+          <span class="score-num" id="p1-score">0</span>
+        </div>
+        <div class="score-divider">:</div>
+        <div class="player-score p2">
+          <span class="score-num" id="p2-score">0</span>
+          <span class="p-name" id="p2-name">상대방</span>
+        </div>
+      </div>
+
+      <!-- Canvas Wrapper -->
+      <div id="canvas-wrapper">
+        <canvas id="gameCanvas" width="800" height="450"></canvas>
+      </div>
+
+      <!-- Touch Controls -->
+      <div id="touch-controls">
+        <!-- D-Pad -->
+        <div class="dpad">
+          <button class="t-btn" id="t-left">◀</button>
+          <div class="dpad-center">
+            <button class="t-btn" id="t-up">▲ 점프</button>
+            <button class="t-btn" id="t-down">▼</button>
+          </div>
+          <button class="t-btn" id="t-right">▶</button>
+        </div>
+
+        <!-- Action Button -->
+        <div class="action-pad">
+          <button class="t-btn t-btn-smash" id="t-smash">⚡ 스매시<br><small>(공 치기)</small></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="gameover-modal" class="modal">
+      <div class="modal-box">
+        <h2 id="modal-winner-text">승리! 🎉</h2>
+        <p id="modal-winner-desc">피카츄 배구 경기 종료</p>
+        <button id="btn-rematch" class="btn btn-primary">한 판 더!</button>
+        <button id="btn-to-lobby" class="btn btn-secondary">로비로 나가기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="pika-game.js?v=3"></script>
+</body>
+</html>

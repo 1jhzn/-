@@ -403,69 +403,156 @@ canvas#gameCanvas {
   max-width: 800px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 8px 10px 14px;
+  align-items: flex-end;
+  padding: 10px 14px 18px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  box-sizing: border-box;
 }
 
+/* D-Pad Buttons (BIG & CLEAR) */
 .dpad {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .dpad-center {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .t-btn {
-  background: rgba(30, 41, 59, 0.85);
+  background: rgba(30, 41, 59, 0.92);
   color: white;
   border: 2px solid #475569;
-  border-radius: 12px;
-  font-size: 1.1rem;
+  border-radius: 16px;
+  font-size: 1.3rem;
   font-weight: 800;
-  width: 56px;
-  height: 52px;
+  width: 68px;
+  height: 62px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.08s ease, background 0.1s ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .t-btn:active {
-  background: #2563eb;
+  background: #3b82f6;
   border-color: #93c5fd;
-  transform: scale(0.95);
-}
-
-.action-pad {
-  display: flex;
-  align-items: center;
-}
-
-.t-btn-smash {
-  width: 85px;
-  height: 85px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  border: 3px solid #fecaca;
-  font-size: 0.95rem;
-  text-align: center;
-  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.5);
-}
-
-.t-btn-smash:active {
-  background: #b91c1c;
   transform: scale(0.92);
 }
 
-.t-btn-smash small {
+.t-btn-jump {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #bfdbfe;
+}
+
+.t-btn-jump:active {
+  background: #2563eb;
+}
+
+/* Action Skills Cluster */
+.action-pad {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.sub-skills {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.t-btn-skill {
+  width: 62px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+}
+
+.skill-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.skill-label {
   font-size: 0.65rem;
-  opacity: 0.9;
-  font-weight: 500;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.t-btn-dive {
+  background: #065f46;
+  border-color: #10b981;
+  color: #a7f3d0;
+}
+
+.t-btn-dive:active {
+  background: #059669;
+  transform: scale(0.92);
+}
+
+.t-btn-feint {
+  background: #581c87;
+  border-color: #a855f7;
+  color: #f3e8ff;
+}
+
+.t-btn-feint:active {
+  background: #7e22ce;
+  transform: scale(0.92);
+}
+
+/* Big Smash Button */
+.t-btn-smash {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #f87171, #dc2626 70%, #991b1b 100%);
+  border: 4px solid #fecaca;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+}
+
+.t-btn-smash:active {
+  background: radial-gradient(circle at 50% 50%, #dc2626, #7f1d1d);
+  transform: scale(0.91);
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.8);
+}
+
+.smash-bolt {
+  font-size: 1.8rem;
+  line-height: 1;
+  color: #fef08a;
+  text-shadow: 0 0 8px #facc15;
+}
+
+.smash-text {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.5px;
 }
 
 /* Modal */
@@ -473,7 +560,7 @@ canvas#gameCanvas {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   justify-content: center;
   align-items: center;
   z-index: 1000;
@@ -507,7 +594,132 @@ canvas#gameCanvas {
   font-size: 0.9rem;
 }
 
-/* Force Landscape Mode */
+/* 📱 NATIVE & FORCED LANDSCAPE MODE (Game-pad Overlay) */
+@media (orientation: landscape), (max-height: 520px) {
+  #top-bar {
+    position: fixed;
+    top: 6px;
+    right: 12px;
+    background: transparent;
+    border-bottom: none;
+    padding: 0;
+    z-index: 120;
+    pointer-events: none;
+  }
+  #top-bar .logo {
+    display: none;
+  }
+  #top-bar .top-controls {
+    pointer-events: auto;
+  }
+  .top-btn {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(4px);
+    border: 1px solid #475569;
+  }
+
+  #play-screen {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #scoreboard {
+    position: fixed;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 110;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(71, 85, 105, 0.8);
+    padding: 4px 18px;
+    max-width: 320px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  .score-num {
+    font-size: 1.3rem;
+  }
+
+  #canvas-wrapper {
+    position: absolute;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #020617;
+  }
+
+  canvas#gameCanvas {
+    height: 100vh;
+    max-height: 100vh;
+    width: auto;
+    aspect-ratio: 16 / 9;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* Fixed Gamepad Overlay for Thumb reach */
+  #touch-controls {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    pointer-events: none;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 16px 24px;
+    box-sizing: border-box;
+  }
+
+  .dpad {
+    pointer-events: auto;
+    background: rgba(15, 23, 42, 0.4);
+    padding: 8px;
+    border-radius: 20px;
+    backdrop-filter: blur(2px);
+  }
+
+  .action-pad {
+    pointer-events: auto;
+    background: rgba(15, 23, 42, 0.4);
+    padding: 8px;
+    border-radius: 24px;
+    backdrop-filter: blur(2px);
+  }
+
+  .t-btn {
+    width: 74px;
+    height: 68px;
+    font-size: 1.4rem;
+  }
+
+  .t-btn-smash {
+    width: 104px;
+    height: 104px;
+  }
+
+  .t-btn-skill {
+    width: 68px;
+    height: 60px;
+  }
+}
+
+/* Force 90deg rotation class */
 body.force-landscape #game-app {
   transform: rotate(90deg);
   transform-origin: center center;

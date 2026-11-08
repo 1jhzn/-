@@ -123,19 +123,32 @@
 
       <!-- Touch Controls -->
       <div id="touch-controls">
-        <!-- D-Pad -->
+        <!-- D-Pad (Left side) -->
         <div class="dpad">
-          <button class="t-btn" id="t-left">◀</button>
+          <button class="t-btn t-btn-dir" id="t-left" aria-label="왼쪽">◀</button>
           <div class="dpad-center">
-            <button class="t-btn" id="t-up">▲ 점프</button>
-            <button class="t-btn" id="t-down">▼</button>
+            <button class="t-btn t-btn-dir t-btn-jump" id="t-up" aria-label="점프">▲ 점프</button>
+            <button class="t-btn t-btn-dir" id="t-down" aria-label="숙이기/다이빙">▼</button>
           </div>
-          <button class="t-btn" id="t-right">▶</button>
+          <button class="t-btn t-btn-dir" id="t-right" aria-label="오른쪽">▶</button>
         </div>
 
-        <!-- Action Button -->
+        <!-- Action Skills (Right side) -->
         <div class="action-pad">
-          <button class="t-btn t-btn-smash" id="t-smash">⚡ 스매시<br><small>(공 치기)</small></button>
+          <div class="sub-skills">
+            <button class="t-btn t-btn-skill t-btn-dive" id="t-dive" aria-label="슬라이딩 다이빙">
+              <span class="skill-icon">🏃</span>
+              <span class="skill-label">슬라이딩</span>
+            </button>
+            <button class="t-btn t-btn-skill t-btn-feint" id="t-feint" aria-label="페인트 드롭샷">
+              <span class="skill-icon">🎯</span>
+              <span class="skill-label">페인트</span>
+            </button>
+          </div>
+          <button class="t-btn t-btn-smash" id="t-smash" aria-label="번개 스매시">
+            <span class="smash-bolt">⚡</span>
+            <span class="smash-text">강스매시</span>
+          </button>
         </div>
       </div>
     </div>

@@ -35,7 +35,10 @@ class SoundFX {
     } catch (e) {}
   }
   hit() { this.beep(350, 0.08, 'triangle'); }
-  smash() { this.beep(750, 0.15, 'sawtooth'); }
+  smash() { this.beep(850, 0.18, 'sawtooth'); }
+  dive() { this.beep(220, 0.12, 'triangle'); }
+  feint() { this.beep(600, 0.06, 'sine'); }
+  save() { this.beep(980, 0.22, 'sine'); }
   score() { this.beep(520, 0.25, 'sine'); }
 }
 const sfx = new SoundFX();
@@ -59,7 +62,8 @@ let isGameOver = false;
 const p1 = {
   x: 180, y: GROUND_Y, vx: 0, vy: 0,
   width: 55, height: 65,
-  isGrounded: true, isDiving: false, isSmashing: false,
+  isGrounded: true, isDiving: false, isSmashing: false, isFeint: false,
+  diveTimer: 0,
   facing: 1, // 1: right, -1: left
   color: '#facc15'
 };
@@ -67,7 +71,8 @@ const p1 = {
 const p2 = {
   x: 620, y: GROUND_Y, vx: 0, vy: 0,
   width: 55, height: 65,
-  isGrounded: true, isDiving: false, isSmashing: false,
+  isGrounded: true, isDiving: false, isSmashing: false, isFeint: false,
+  diveTimer: 0,
   facing: -1,
   color: '#fbbf24'
 };
@@ -78,9 +83,29 @@ const ball = {
   isFiery: false
 };
 
+// Particles (Dust & Sparks)
+const particles = [];
+
+function spawnParticles(x, y, count, type = 'spark') {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 5 + 1.5;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1.0,
+      decay: Math.random() * 0.04 + 0.03,
+      size: Math.random() * 4 + 2,
+      type
+    });
+  }
+}
+
 // Controls State
 const keys = {
-  left: false, right: false, up: false, down: false, smash: false
+  left: false, right: false, up: false, down: false,
+  smash: false, dive: false, feint: false
 };
 
 // DOM References
@@ -157,6 +182,8 @@ function bindControls() {
     if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') keys.up = true;
     if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
     if (e.code === 'Enter' || e.code === 'KeyZ' || e.code === 'KeyJ') keys.smash = true;
+    if (e.code === 'KeyC' || e.code === 'KeyK' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.dive = true;
+    if (e.code === 'KeyX' || e.code === 'KeyL') keys.feint = true;
   });
 
   window.addEventListener('keyup', (e) => {
@@ -165,6 +192,8 @@ function bindControls() {
     if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') keys.up = false;
     if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = false;
     if (e.code === 'Enter' || e.code === 'KeyZ' || e.code === 'KeyJ') keys.smash = false;
+    if (e.code === 'KeyC' || e.code === 'KeyK' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.dive = false;
+    if (e.code === 'KeyX' || e.code === 'KeyL') keys.feint = false;
   });
 
   // Mobile Touch Controls
@@ -192,6 +221,8 @@ function bindControls() {
   setupTouch('t-up', 'up');
   setupTouch('t-down', 'down');
   setupTouch('t-smash', 'smash');
+  setupTouch('t-dive', 'dive');
+  setupTouch('t-feint', 'feint');
 
   // Match Action Handlers
   btnQuickMatch.addEventListener('click', startQuickMatch);
@@ -441,19 +472,39 @@ function update() {
   const minX = isHost ? 40 : NET_X + NET_WIDTH / 2 + 30;
   const maxX = isHost ? NET_X - NET_WIDTH / 2 - 30 : 760;
 
-  me.vx = 0;
-  if (keys.left) { me.vx = -6; me.facing = -1; }
-  if (keys.right) { me.vx = 6; me.facing = 1; }
+  // Handle Diving State
+  if (me.diveTimer > 0) {
+    me.diveTimer--;
+    me.isDiving = true;
+    me.vx = me.facing * 12;
+    spawnParticles(me.x - me.facing * 20, GROUND_Y - 5, 2, 'dust');
+  } else {
+    me.isDiving = false;
 
-  // Jump
-  if (keys.up && me.isGrounded) {
-    me.vy = -13.5;
-    me.isGrounded = false;
-    sfx.hit();
+    // Trigger Dive
+    if (keys.dive && me.isGrounded) {
+      me.diveTimer = 22;
+      me.isDiving = true;
+      me.vx = me.facing * 12;
+      sfx.dive();
+      spawnParticles(me.x, GROUND_Y - 5, 6, 'dust');
+    } else {
+      me.vx = 0;
+      if (keys.left) { me.vx = -6.5; me.facing = -1; }
+      if (keys.right) { me.vx = 6.5; me.facing = 1; }
+
+      // Jump
+      if (keys.up && me.isGrounded) {
+        me.vy = -13.8;
+        me.isGrounded = false;
+        sfx.hit();
+      }
+    }
   }
 
-  // Smash trigger
+  // Action Skill Triggers
   me.isSmashing = keys.smash;
+  me.isFeint = keys.feint;
 
   // Physics apply to me
   me.x += me.vx;
@@ -506,22 +557,43 @@ function updateAi() {
   const minX = NET_X + NET_WIDTH / 2 + 35;
   const maxX = 740;
 
-  // AI tracks ball when ball is on right side
-  let targetX = ball.x + 20;
-  if (ball.x < NET_X) {
-    targetX = 620; // default position
-  }
+  if (opp.diveTimer > 0) {
+    opp.diveTimer--;
+    opp.isDiving = true;
+    opp.vx = opp.facing * 11;
+    spawnParticles(opp.x - opp.facing * 20, GROUND_Y - 5, 2, 'dust');
+  } else {
+    opp.isDiving = false;
 
-  opp.vx = 0;
-  if (opp.x < targetX - 10) opp.vx = 4.8;
-  else if (opp.x > targetX + 10) opp.vx = -4.8;
+    // AI tracks ball when ball is on right side
+    let targetX = ball.x + 20;
+    if (ball.x < NET_X) {
+      targetX = 620; // default position
+    }
 
-  // AI Jump when ball is nearby
-  const dist = Math.hypot(ball.x - opp.x, ball.y - (opp.y - 30));
-  if (dist < 80 && opp.isGrounded && ball.y < opp.y - 10) {
-    opp.vy = -13;
-    opp.isGrounded = false;
-    opp.isSmashing = (Math.random() > 0.4);
+    opp.vx = 0;
+    if (opp.x < targetX - 10) { opp.vx = 5.2; opp.facing = 1; }
+    else if (opp.x > targetX + 10) { opp.vx = -5.2; opp.facing = -1; }
+
+    // AI Dive Save: when ball is falling fast low to ground
+    const ballDistance = Math.hypot(ball.x - opp.x, ball.y - GROUND_Y);
+    if (ball.x > NET_X + 20 && ball.y > 280 && ball.vy > 2.5 && ballDistance > 70 && ballDistance < 160 && opp.isGrounded) {
+      opp.facing = (ball.x > opp.x ? 1 : -1);
+      opp.diveTimer = 22;
+      opp.isDiving = true;
+      opp.vx = opp.facing * 12;
+      sfx.dive();
+      spawnParticles(opp.x, GROUND_Y - 5, 6, 'dust');
+    }
+
+    // AI Jump & Smash when ball is nearby
+    const dist = Math.hypot(ball.x - opp.x, ball.y - (opp.y - 30));
+    if (dist < 85 && opp.isGrounded && ball.y < opp.y - 10) {
+      opp.vy = -13.5;
+      opp.isGrounded = false;
+      opp.isSmashing = (Math.random() > 0.35);
+      opp.isFeint = (!opp.isSmashing && Math.random() > 0.6);
+    }
   }
 
   opp.x += opp.vx;
@@ -606,20 +678,57 @@ function updateBallPhysics() {
 }
 
 function checkPlayerBallCollision(player, courtDirection) {
+  // 1. Sliding Dive Collision Check (Low & Wide Hitbox)
+  if (player.isDiving) {
+    const diveHitX = player.x + player.facing * 18;
+    const diveHitY = GROUND_Y - 18;
+    const diveDist = Math.hypot(ball.x - diveHitX, ball.y - diveHitY);
+
+    if (diveDist < ball.radius + 38 && ball.y > 270) {
+      // 🏃 SUPER DIVE SAVE!
+      ball.isFiery = false;
+      ball.vy = -12.8;
+      ball.vx = courtDirection * 3.2;
+      ball.y = diveHitY - ball.radius - 4;
+      sfx.save();
+      spawnParticles(ball.x, ball.y, 10, 'spark');
+      return;
+    }
+  }
+
+  // 2. Normal / Air / Smash Collision Check
   const headX = player.x;
   const headY = player.y - 35;
   const dist = Math.hypot(ball.x - headX, ball.y - headY);
 
-  if (dist < ball.radius + 30) {
-    // Collision detected
+  if (dist < ball.radius + 32) {
     const angle = Math.atan2(ball.y - headY, ball.x - headX);
 
     if (player.isSmashing && !player.isGrounded) {
-      // THUNDER SMASH!
+      // ⚡ THUNDER SPIKE!
       ball.isFiery = true;
-      ball.vx = courtDirection * 12;
-      ball.vy = 8.5;
+      if (keys.down) {
+        // Sharp downward spike
+        ball.vx = courtDirection * 9;
+        ball.vy = 11.5;
+      } else if (keys.up) {
+        // Deep long drive spike
+        ball.vx = courtDirection * 15;
+        ball.vy = 5.2;
+      } else {
+        // Standard power spike
+        ball.vx = courtDirection * 13;
+        ball.vy = 8.5;
+      }
       sfx.smash();
+      spawnParticles(ball.x, ball.y, 16, 'spark');
+    } else if (player.isFeint) {
+      // 🎯 FEINT DROP SHOT!
+      ball.isFiery = false;
+      ball.vx = courtDirection * 2.8;
+      ball.vy = -4.5;
+      sfx.feint();
+      spawnParticles(ball.x, ball.y, 6, 'dust');
     } else {
       // Normal hit
       ball.isFiery = false;
@@ -627,11 +736,12 @@ function checkPlayerBallCollision(player, courtDirection) {
       ball.vx = Math.cos(angle) * speed + player.vx * 0.3;
       ball.vy = -Math.abs(Math.sin(angle) * speed) - 3.5;
       sfx.hit();
+      spawnParticles(ball.x, ball.y, 4, 'dust');
     }
 
     // Separate ball from head
-    ball.x = headX + Math.cos(angle) * (ball.radius + 32);
-    ball.y = headY + Math.sin(angle) * (ball.radius + 32);
+    ball.x = headX + Math.cos(angle) * (ball.radius + 34);
+    ball.y = headY + Math.sin(angle) * (ball.radius + 34);
   }
 }
 
@@ -722,6 +832,36 @@ function render() {
 
   // 6. Draw Ball
   drawBall();
+
+  // 7. Draw & Update Particles
+  renderParticles();
+}
+
+function renderParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= p.decay;
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    if (p.type === 'spark') {
+      ctx.fillStyle = '#fef08a';
+      ctx.shadowColor = '#facc15';
+      ctx.shadowBlur = 8;
+      ctx.fillRect(p.x, p.y, p.size * 1.4, p.size * 1.4);
+    } else {
+      ctx.fillStyle = '#eab308';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
 }
 
 function drawCloud(x, y, r) {
@@ -737,6 +877,12 @@ function drawPikachu(player, defaultFace) {
   ctx.save();
   ctx.translate(player.x, player.y);
   if (player.facing === -1) ctx.scale(-1, 1);
+
+  // Tilt forward if sliding/diving
+  if (player.isDiving) {
+    ctx.rotate(0.95);
+    ctx.translate(14, 12);
+  }
 
   // Shadow
   ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';

@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>자기장 탐구 실험실 | 중학 과학 완벽 가이드 & 시뮬레이터</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #131c2e;
+      --card-border: #233554;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --accent: #f59e0b;
+      --danger: #ef4444;
+      --success: #10b981;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding-bottom: 60px;
+    }
+    header {
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      padding: 24px 16px;
+      text-align: center;
+      border-bottom: 1px solid var(--card-border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(8px);
+    }
+    .badge {
+      display: inline-block;
+      background: var(--primary);
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+    header h1 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+      background: linear-gradient(90deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .nav-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 14px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .nav-btn {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .nav-btn.active, .nav-btn:hover {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px 16px;
+    }
+    .section-title {
+      font-size: 20px;
+      font-weight: 800;
+      margin: 32px 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    /* Video Box */
+    .video-wrapper {
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    }
+    video {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 16/9;
+    }
+    .video-chapters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .chapter-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: left;
+      transition: 0.2s;
+    }
+    .chapter-btn:hover {
+      background: #2563eb;
+      color: #fff;
+      border-color: #3b82f6;
+    }
+    /* Canvas Simulators */
+    .sim-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .sim-controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn:hover {
+      background: #334155;
+    }
+    .btn-primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .canvas-box {
+      position: relative;
+      background: #0f172a;
+      border-radius: 12px;
+      border: 1px solid #1e293b;
+      overflow: hidden;
+      touch-action: none;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 380px;
+    }
+    .canvas-hint {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid #334155;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    /* Concept Cards */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .concept-item {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 16px;
+      border-left: 4px solid var(--primary);
+    }
+    .concept-item.accent { border-left-color: var(--accent); }
+    .concept-item.danger { border-left-color: var(--danger); }
+    .concept-item.success { border-left-color: var(--success); }
+    .concept-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .concept-desc {
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+    /* Quiz Box */
+    .quiz-card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+    .quiz-q {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #f1f5f9;
+    }
+    .quiz-options {
+      display: flex;
+      gap: 10px;
+    }
+    .quiz-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .quiz-btn:hover {
+      background: #2563eb;
+      border-color: #3b82f6;
+    }
+    .quiz-feedback {
+      margin-top: 10px;
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: none;
+    }
+    .quiz-feedback.correct {
+      display: block;
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid var(--success);
+      color: #6ee7b7;
+    }
+    .quiz-feedback.wrong {
+      display: block;
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid var(--danger);
+      color: #fca5a5;
+    }
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge">중학교 과학 2학년 · 물리</div>
+    <h1>🧲 자기장 탐구 실험실</h1>
+    <p>자기장의 성질부터 오른손 법칙, 전자석까지 한눈에 마스터하기</p>
+    <div class="nav-tabs">
+      <button class="nav-btn active" onclick="scrollToSection('sec-video')">🎬 1분 핵심영상</button>
+      <button class="nav-btn" onclick="scrollToSection('sec-magnet')">🧭 막대자석 실험</button>
+      <button class="nav-btn" onclick="scrollToSection('sec-wire')">✋ 오른손 법칙</button>
+      <button class="nav-btn" onclick="scrollToSection('sec-coil')">⚡ 전자석 코일</button>
+      <button class="nav-btn" onclick="scrollToSection('sec-quiz')">🎯 3초 퀴즈</button>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- 1. 핵심 영상 섹션 -->
+    <div id="sec-video" class="section-title">🎬 1분 마스터 핵심 설명 영상</div>
+    <div class="card">
+      <div class="video-wrapper">
+        <video id="mainVideo" controls preload="metadata" poster="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1280' height='720' viewBox='0 0 1280 720'><rect width='100%25' height='100%25' fill='%230f172a'/><text x='50%25' y='50%25' fill='%2360a5fa' font-size='48' font-family='sans-serif' text-anchor='middle' dominant-baseline='middle'>🧲 자기장 1분 핵심 설명 영상</text></svg>">
+          <source src="magnetic_field.mp4" type="video/mp4">
+          브라우저가 비디오 재생을 지원하지 않습니다.
+        </video>
+      </div>
+      <div class="video-chapters">
+        <button class="chapter-btn" onclick="seekVideo(0)">⏱ 01. 자기장 개념 (0:00)</button>
+        <button class="chapter-btn" onclick="seekVideo(11.8)">⏱ 02. 자기력선 규칙 (0:12)</button>
+        <button class="chapter-btn" onclick="seekVideo(23.8)">⏱ 03. 오른손 법칙 (0:24)</button>
+        <button class="chapter-btn" onclick="seekVideo(37.2)">⏱ 04. 코일과 전자석 (0:37)</button>
+        <button class="chapter-btn" onclick="seekVideo(49.2)">⏱ 05. 실생활 활용 (0:49)</button>
+      </div>
+      <div style="margin-top: 14px; text-align: right;">
+        <a href="magnetic_field.mp4" download="자기장_설명영상.mp4" class="btn btn-primary" style="text-decoration: none;">⬇ 영상 파일 다운로드 (MP4)</a>
+      </div>
+    </div>
+
+    <!-- 2. 인터랙티브 막대자석 실험실 -->
+    <div id="sec-magnet" class="section-title">🧪 실험 1 : 막대자석과 나침반 시뮬레이터</div>
+    <div class="card">
+      <div class="sim-header">
+        <div style="font-size: 13px; color: #cbd5e1;">마우스나 손가락으로 <b>나침반을 드래그</b>하여 자기장 방향을 관찰하세요!</div>
+        <div class="sim-controls">
+          <button class="btn" onclick="togglePoles()">🔄 N/S 극 반전</button>
+          <button class="btn" id="filingsBtn" onclick="toggleFilings()">✨ 쇳가루 뿌리기</button>
+          <button class="btn" onclick="resetCompass()">🎯 나침반 중앙 배치</button>
+        </div>
+      </div>
+      <div class="canvas-box">
+        <canvas id="magnetCanvas"></canvas>
+        <div class="canvas-hint">💡 팁: 나침반 빨간 바늘(N극)이 가리키는 방향이 곧 자기장 방향입니다!</div>
+      </div>
+    </div>
+
+    <!-- 3. 직선 도선과 오른손 법칙 실험실 -->
+    <div id="sec-wire" class="section-title">🧪 실험 2 : 직선 도선과 앙페르 오른손 법칙</div>
+    <div class="card">
+      <div class="sim-header">
+        <div style="font-size: 13px; color: #cbd5e1;">전류 스위치를 누르고 도선 주위 <b>동심원 자기장</b>을 확인하세요!</div>
+        <div class="sim-controls">
+          <button class="btn btn-primary" id="currentUpBtn" onclick="setWireCurrent('up')">⬆ 전류 위로 (I ↑)</button>
+          <button class="btn" id="currentDownBtn" onclick="setWireCurrent('down')">⬇ 전류 아래로 (I ↓)</button>
+          <button class="btn" id="currentOffBtn" onclick="setWireCurrent('off')">⏹ 전류 끄기</button>
+        </div>
+      </div>
+      <div class="canvas-box">
+        <canvas id="wireCanvas"></canvas>
+        <div class="canvas-hint">👍 엄지손가락: 전류(I) / 🔄 네 손가락: 자기장(B) 동심원 방향</div>
+      </div>
+    </div>
+
+    <!-- 4. 코일과 전자석 실험실 -->
+    <div id="sec-coil" class="section-title">🧪 실험 3 : 코일(솔레노이드)과 전자석</div>
+    <div class="card">
+      <div class="sim-header">
+        <div style="font-size: 13px; color: #cbd5e1;">스위치를 켜면 코일이 <b>강력한 막대자석(전자석)</b>으로 변합니다!</div>
+        <div class="sim-controls">
+          <button class="btn btn-primary" id="coilPowerBtn" onclick="toggleCoilPower()">⚡ 전원 ON/OFF</button>
+          <button class="btn" onclick="toggleCoilDirection()">🔀 전류 방향 반전</button>
+        </div>
+      </div>
+      <div class="canvas-box">
+        <canvas id="coilCanvas"></canvas>
+        <div class="canvas-hint">철심을 넣고 전류를 흘리면 영구자석보다 훨씬 강한 자석이 됩니다!</div>
+      </div>
+    </div>
+
+    <!-- 5. 핵심 개념 총정리 카드 -->
+    <div class="section-title">📚 중2 과학 시험 직전 핵심 개념 요약</div>
+    <div class="grid-2">
+      <div class="concept-item">
+        <div class="concept-title">🧲 자기장 & 자기력</div>
+        <div class="concept-desc">
+          • <b>자기력</b> : 자석과 쇠붙이, 자석과 자석 사이에 작용하는 밀거나 당기는 힘.<br>
+          • <b>자기장</b> : 자기력이 미치는 보이지 않는 공간. 나침반의 N극이 가리키는 방향이 그 지점의 자기장 방향!
+        </div>
+      </div>
+      <div class="concept-item accent">
+        <div class="concept-title">📌 자기력선의 4대 불변 규칙</div>
+        <div class="concept-desc">
+          ① 자석 밖에서는 <b>N극에서 나와 S극으로</b> 들어감.<br>
+          ② 도중에 <b>끊어지거나 서로 겹치지 않음</b>.<br>
+          ③ 선이 <b>촘촘할수록 자기장이 강함</b> (양 극 주변).<br>
+          ④ 자기력선의 접선 방향 = 나침반 N극 방향.
+        </div>
+      </div>
+      <div class="concept-item danger">
+        <div class="concept-title">✋ 앙페르 오른손 법칙</div>
+        <div class="concept-desc">
+          • <b>직선 도선</b> : 엄지손가락 = 전류(I) / 네 손가락 = 자기장(B) 동심원 회전.<br>
+          • <b>코일(원형도선)</b> : 네 손가락 = 전류 회전 방향 / 엄지손가락 = 코일 내부 자기장(N극 방향).
+        </div>
+      </div>
+      <div class="concept-item success">
+        <div class="concept-title">⚙️ 실생활 속 핵심 활용</div>
+        <div class="concept-desc">
+          • <b>전동기(모터)</b> : 자기장 속 전류가 받는 힘으로 회전 (선풍기, 세탁기).<br>
+          • <b>전자석</b> : 전류를 켜고 끌 수 있는 자석 (스피커, 자기부상열차, MRI).
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. 3초 개념 퀴즈 -->
+    <div id="sec-quiz" class="section-title">🎯 실력 점검! 3초 개념 퀴즈</div>
+    <div class="card">
+      <div class="quiz-card" id="q1">
+        <div class="quiz-q">Q1. 자기력선은 자기장이 강한 곳일수록 선이 더 촘촘하다?</div>
+        <div class="quiz-options">
+          <button class="quiz-btn" onclick="checkAnswer('q1', true, true, '정답입니다! 양 극처럼 자기장이 센 곳일수록 자기력선이 매우 빽빽하게 모입니다.')">O</button>
+          <button class="quiz-btn" onclick="checkAnswer('q1', false, true, '오답입니다. 자기력선이 촘촘할수록 자기장의 세기가 강합니다.')">X</button>
+        </div>
+        <div class="quiz-feedback" id="q1-fb"></div>
+      </div>
+
+      <div class="quiz-card" id="q2">
+        <div class="quiz-q">Q2. 자기력선은 서로 만나거나 교차할 수 있다?</div>
+        <div class="quiz-options">
+          <button class="quiz-btn" onclick="checkAnswer('q2', true, false, '오답입니다! 자기력선은 도중에 절대 끊어지거나 교차하지 않습니다.')">O</button>
+          <button class="quiz-btn" onclick="checkAnswer('q2', false, false, '정답입니다! 자기력선은 결코 서로 교차하거나 겹치지 않는 성질이 있습니다.')">X</button>
+        </div>
+        <div class="quiz-feedback" id="q2-fb"></div>
+      </div>
+
+      <div class="quiz-card" id="q3">
+        <div class="quiz-q">Q3. 직선 도선에 흐르는 전류의 방향을 반대로 바꾸면 자기장의 방향도 반대가 된다?</div>
+        <div class="quiz-options">
+          <button class="quiz-btn" onclick="checkAnswer('q3', true, true, '정답입니다! 오른손 엄지(전류) 방향이 바뀌면 네 손가락(자기장)이 감아쥐는 회전 방향도 반대가 됩니다.')">O</button>
+          <button class="quiz-btn" onclick="checkAnswer('q3', false, true, '오답입니다. 전류의 방향이 바뀌면 오른손 법칙에 의해 자기장 방향도 180도 반대로 뒤집힙니다.')">X</button>
+        </div>
+        <div class="quiz-feedback" id="q3-fb"></div>
+      </div>
+    </div>
+
+    <footer>
+      자기장 탐구 실험실 · 제작: 반역왕이지훈 비서 · GitHub Pages 라이브
+    </footer>
+  </div>
+
+  <script>
+    function scrollToSection(id) {
+      document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function seekVideo(time) {
+      const v = document.getElementById('mainVideo');
+      v.currentTime = time;
+      v.play();
+    }
+
+    function checkAnswer(qId, choice, answer, explain) {
+      const fb = document.getElementById(qId + '-fb');
+      if (choice === answer) {
+        fb.className = 'quiz-feedback correct';
+        fb.innerHTML = '🎉 ' + explain;
+      } else {
+        fb.className = 'quiz-feedback wrong';
+        fb.innerHTML = '❌ ' + explain;
+      }
+    }
+
+    // --- 시뮬레이터 1: 막대자석 & 나침반 & 쇳가루 ---
+    const magCanvas = document.getElementById('magnetCanvas');
+    const magCtx = magCanvas.getContext('2d');
+    let magWidth, magHeight;
+    let magnetFlipped = false;
+    let showFilings = false;
+    let compass = { x: 0, y: 0, dragging: false };
+
+    function resizeMagCanvas() {
+      magWidth = magCanvas.parentElement.clientWidth;
+      magHeight = 380;
+      magCanvas.width = magWidth;
+      magCanvas.height = magHeight;
+      if (compass.x === 0) {
+        compass.x = magWidth * 0.72;
+        compass.y = magHeight * 0.32;
+      }
+    }
+    window.addEventListener('resize', resizeMagCanvas);
+    resizeMagCanvas();
+
+    function togglePoles() {
+      magnetFlipped = !magnetFlipped;
+    }
+    function toggleFilings() {
+      showFilings = !showFilings;
+      document.getElementById('filingsBtn').classList.toggle('btn-primary', showFilings);
+    }
+    function resetCompass() {
+      compass.x = magWidth * 0.72;
+      compass.y = magHeight * 0.32;
+    }
+
+    // Pointer events for dragging compass
+    function handlePointer(e, down) {
+      const rect = magCanvas.getBoundingClientRect();
+      const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+      const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+      if (down) {
+        const d = Math.hypot(x - compass.x, y - compass.y);
+        if (d < 45) compass.dragging = true;
+      } else {
+        compass.dragging = false;
+      }
+      if (compass.dragging && x !== undefined && y !== undefined) {
+        compass.x = Math.max(30, Math.min(magWidth - 30, x));
+        compass.y = Math.max(30, Math.min(magHeight - 30, y));
+      }
+    }
+    magCanvas.addEventListener('mousedown', e => handlePointer(e, true));
+    window.addEventListener('mouseup', () => handlePointer({}, false));
+    magCanvas.addEventListener('mousemove', e => handlePointer(e, false));
+    magCanvas.addEventListener('touchstart', e => { handlePointer(e, true); e.preventDefault(); }, {passive: false});
+    window.addEventListener('touchend', () => handlePointer({}, false));
+    magCanvas.addEventListener('touchmove', e => { handlePointer(e, false); e.preventDefault(); }, {passive: false});
+
+    function getMagneticField(x, y) {
+      const cx = magWidth / 2;
+      const cy = magHeight / 2;
+      const mw = 180;
+      // N pole and S pole coordinates
+      const nX = magnetFlipped ? cx + mw/3 : cx - mw/3;
+      const sX = magnetFlipped ? cx - mw/3 : cx + mw/3;
+      const poleY = cy;
+
+      // Dipole field calculation
+      const rN = Math.hypot(x - nX, y - poleY) + 15;
+      const rS = Math.hypot(x - sX, y - poleY) + 15;
+
+      // Field away from N, toward S
+      const bNx = (x - nX) / (rN * rN * rN);
+      const bNy = (y - poleY) / (rN * rN * rN);
+
+      const bSx = -(x - sX) / (rS * rS * rS);
+      const bSy = -(y - poleY) / (rS * rS * rS);
+
+      return { bx: bNx + bSx, by: bNy + bSy };
+    }
+
+    let animTime = 0;
+    function drawMagnetSim() {
+      animTime += 0.02;
+      magCtx.clearRect(0, 0, magWidth, magHeight);
+
+      const cx = magWidth / 2;
+      const cy = magHeight / 2;
+      const mw = 180, mh = 50;
+
+      // 쇳가루 모드
+      if (showFilings) {
+        magCtx.fillStyle = '#64748b';
+        const step = 16;
+        for (let x = 20; x < magWidth; x += step) {
+          for (let y = 20; y < magHeight; y += step) {
+            if (x > cx - mw/2 - 10 && x < cx + mw/2 + 10 && y > cy - mh/2 - 10 && y < cy + mh/2 + 10) continue;
+            const b = getMagneticField(x, y);
+            const ang = Math.atan2(b.by, b.bx);
+            magCtx.save();
+            magCtx.translate(x, y);
+            magCtx.rotate(ang);
+            magCtx.fillRect(-5, -1, 10, 2);
+            magCtx.restore();
+          }
+        }
+      } else {
+        // 자기력선 곡선 그리기
+        const radii = [60, 100, 150, 220];
+        magCtx.lineWidth = 1.5;
+        radii.forEach((r, idx) => {
+          magCtx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+          magCtx.beginPath();
+          for (let a = 0; a <= 180; a += 5) {
+            const rad = a * Math.PI / 180;
+            const px = cx - Math.cos(rad) * (mw/3 + r * 1.2) * (magnetFlipped ? -1 : 1);
+            const pyTop = cy - Math.sin(rad) * r;
+            if (a === 0) magCtx.moveTo(px, pyTop);
+            else magCtx.lineTo(px, pyTop);
+          }
+          magCtx.stroke();
+
+          magCtx.beginPath();
+          for (let a = 0; a <= 180; a += 5) {
+            const rad = a * Math.PI / 180;
+            const px = cx - Math.cos(rad) * (mw/3 + r * 1.2) * (magnetFlipped ? -1 : 1);
+            const pyBot = cy + Math.sin(rad) * r;
+            if (a === 0) magCtx.moveTo(px, pyBot);
+            else magCtx.lineTo(px, pyBot);
+          }
+          magCtx.stroke();
+        });
+      }
+
+      // 막대자석 본체
+      const leftPole = magnetFlipped ? 'S' : 'N';
+      const rightPole = magnetFlipped ? 'N' : 'S';
+      const leftColor = magnetFlipped ? '#2563eb' : '#ef4444';
+      const rightColor = magnetFlipped ? '#ef4444' : '#2563eb';
+
+      // Left Half
+      magCtx.fillStyle = leftColor;
+      magCtx.beginPath();
+      magCtx.roundRect(cx - mw/2, cy - mh/2, mw/2, mh, [8, 0, 0, 8]);
+      magCtx.fill();
+
+      // Right Half
+      magCtx.fillStyle = rightColor;
+      magCtx.beginPath();
+      magCtx.roundRect(cx, cy - mh/2, mw/2, mh, [0, 8, 8, 0]);
+      magCtx.fill();
+
+      // Pole Letters
+      magCtx.fillStyle = '#ffffff';
+      magCtx.font = 'bold 24px sans-serif';
+      magCtx.textAlign = 'center';
+      magCtx.textBaseline = 'middle';
+      magCtx.fillText(leftPole, cx - mw/4, cy);
+      magCtx.fillText(rightPole, cx + mw/4, cy);
+
+      // 드래그 가능한 나침반
+      const bComp = getMagneticField(compass.x, compass.y);
+      const compAngle = Math.atan2(bComp.by, bComp.bx);
+
+      magCtx.save();
+      magCtx.translate(compass.x, compass.y);
+
+      // 나침반 외곽 케이스
+      magCtx.beginPath();
+      magCtx.arc(0, 0, 32, 0, Math.PI * 2);
+      magCtx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+      magCtx.fill();
+      magCtx.strokeStyle = compass.dragging ? '#f59e0b' : '#94a3b8';
+      magCtx.lineWidth = 3;
+      magCtx.stroke();
+
+      // 나침반 바늘
+      magCtx.rotate(compAngle);
+      // N극 바늘 (빨강)
+      magCtx.beginPath();
+      magCtx.moveTo(0, -6);
+      magCtx.lineTo(26, 0);
+      magCtx.lineTo(0, 6);
+      magCtx.fillStyle = '#ef4444';
+      magCtx.fill();
+      // S극 바늘 (파랑)
+      magCtx.beginPath();
+      magCtx.moveTo(0, -6);
+      magCtx.lineTo(-26, 0);
+      magCtx.lineTo(0, 6);
+      magCtx.fillStyle = '#3b82f6';
+      magCtx.fill();
+      // 중심 피봇
+      magCtx.beginPath();
+      magCtx.arc(0, 0, 4, 0, Math.PI * 2);
+      magCtx.fillStyle = '#ffffff';
+      magCtx.fill();
+
+      magCtx.restore();
+
+      requestAnimationFrame(drawMagnetSim);
+    }
+    drawMagnetSim();
+
+    // --- 시뮬레이터 2: 직선 도선 오른손 법칙 ---
+    const wireCanvas = document.getElementById('wireCanvas');
+    const wireCtx = wireCanvas.getContext('2d');
+    let wireCurrent = 'up'; // 'up', 'down', 'off'
+
+    function setWireCurrent(dir) {
+      wireCurrent = dir;
+      document.getElementById('currentUpBtn').classList.toggle('btn-primary', dir === 'up');
+      document.getElementById('currentDownBtn').classList.toggle('btn-primary', dir === 'down');
+      document.getElementById('currentOffBtn').classList.toggle('btn-primary', dir === 'off');
+    }
+
+    function resizeWireCanvas() {
+      wireCanvas.width = wireCanvas.parentElement.clientWidth;
+      wireCanvas.height = 380;
+    }
+    window.addEventListener('resize', resizeWireCanvas);
+    resizeWireCanvas();
+
+    let wireAngle = 0;
+    function drawWireSim() {
+      wireCtx.clearRect(0, 0, wireCanvas.width, wireCanvas.height);
+      const w = wireCanvas.width, h = wireCanvas.height;
+      const cx = w / 2, cy = h / 2;
+
+      // 3D 투영 평면 판자
+      wireCtx.fillStyle = 'rgba(30, 41, 59, 0.6)';
+      wireCtx.strokeStyle = '#334155';
+      wireCtx.lineWidth = 2;
+      wireCtx.beginPath();
+      wireCtx.moveTo(cx - 240, cy + 70);
+      wireCtx.lineTo(cx + 240, cy + 70);
+      wireCtx.lineTo(cx + 160, cy - 70);
+      wireCtx.lineTo(cx - 320, cy - 70);
+      wireCtx.closePath();
+      wireCtx.fill();
+      wireCtx.stroke();
+
+      // 수직 도선 (구리선)
+      wireCtx.fillStyle = '#d97706';
+      wireCtx.fillRect(cx - 8, 40, 16, h - 80);
+      wireCtx.fillStyle = '#fbbf24';
+      wireCtx.fillRect(cx - 4, 40, 8, h - 80);
+
+      // 전류 흐름 애니메이션
+      if (wireCurrent !== 'off') {
+        const speed = wireCurrent === 'up' ? -2.5 : 2.5;
+        wireAngle += speed * 0.03;
+
+        // 전류 화살표
+        wireCtx.fillStyle = '#ef4444';
+        for (let i = 0; i < 4; i++) {
+          const ay = ((Date.now() * 0.1 * (wireCurrent === 'up' ? -1 : 1) + i * 75) % (h - 120) + (h - 120)) % (h - 120) + 60;
+          wireCtx.beginPath();
+          if (wireCurrent === 'up') {
+            wireCtx.moveTo(cx, ay - 12);
+            wireCtx.lineTo(cx - 10, ay + 8);
+            wireCtx.lineTo(cx + 10, ay + 8);
+          } else {
+            wireCtx.moveTo(cx, ay + 12);
+            wireCtx.lineTo(cx - 10, ay - 8);
+            wireCtx.lineTo(cx + 10, ay - 8);
+          }
+          wireCtx.fill();
+        }
+
+        // 전류 레이블
+        wireCtx.fillStyle = '#f59e0b';
+        wireCtx.font = 'bold 16px sans-serif';
+        wireCtx.textAlign = 'right';
+        wireCtx.fillText('전류 (I) ' + (wireCurrent === 'up' ? '⬆' : '⬇'), cx - 20, 60);
+
+        // 동심원 자기장 링
+        const rings = [60, 110, 170];
+        rings.forEach((r, idx) => {
+          wireCtx.strokeStyle = 'rgba(59, 130, 246, 0.7)';
+          wireCtx.lineWidth = 2.5;
+          wireCtx.beginPath();
+          wireCtx.ellipse(cx, cy, r, r * 0.4, 0, 0, Math.PI * 2);
+          wireCtx.stroke();
+
+          // 회전 화살표 (오른손 법칙)
+          // 전류 위로: 반시계방향 / 아래로: 시계방향
+          const dirSign = wireCurrent === 'up' ? 1 : -1;
+          for (let k = 0; k < 3; k++) {
+            const rot = wireAngle * dirSign + (k * Math.PI * 2 / 3) + idx * 0.4;
+            const px = cx + Math.cos(rot) * r;
+            const py = cy + Math.sin(rot) * (r * 0.4);
+
+            // 접선 방향 단위벡터
+            const tx = -Math.sin(rot) * r * dirSign;
+            const ty = Math.cos(rot) * (r * 0.4) * dirSign;
+            const len = Math.hypot(tx, ty) || 1;
+            const ux = tx / len, uy = ty / len;
+
+            wireCtx.fillStyle = '#10b981';
+            wireCtx.beginPath();
+            wireCtx.moveTo(px + ux * 8, py + uy * 8);
+            wireCtx.lineTo(px - ux * 6 - uy * 5, py - uy * 6 + ux * 5);
+            wireCtx.lineTo(px - ux * 6 + uy * 5, py - uy * 6 - ux * 5);
+            wireCtx.fill();
+          }
+        });
+      } else {
+        wireCtx.fillStyle = '#64748b';
+        wireCtx.font = 'bold 16px sans-serif';
+        wireCtx.textAlign = 'center';
+        wireCtx.fillText('전류가 흐르지 않아 자기장이 생기지 않습니다.', cx, cy + 120);
+      }
+
+      requestAnimationFrame(drawWireSim);
+    }
+    drawWireSim();
+
+    // --- 시뮬레이터 3: 코일과 전자석 ---
+    const coilCanvas = document.getElementById('coilCanvas');
+    const coilCtx = coilCanvas.getContext('2d');
+    let coilPower = true;
+    let coilFlipped = false;
+
+    function toggleCoilPower() {
+      coilPower = !coilPower;
+      document.getElementById('coilPowerBtn').classList.toggle('btn-primary', coilPower);
+    }
+    function toggleCoilDirection() {
+      coilFlipped = !coilFlipped;
+    }
+
+    function resizeCoilCanvas() {
+      coilCanvas.width = coilCanvas.parentElement.clientWidth;
+      coilCanvas.height = 380;
+    }
+    window.addEventListener('resize', resizeCoilCanvas);
+    resizeCoilCanvas();
+
+    let coilAnim = 0;
+    function drawCoilSim() {
+      coilCtx.clearRect(0, 0, coilCanvas.width, coilCanvas.height);
+      const w = coilCanvas.width, h = coilCanvas.height;
+      const cx = w / 2, cy = h / 2;
+
+      // 중앙 철심
+      coilCtx.fillStyle = coilPower ? '#475569' : '#334155';
+      coilCtx.strokeStyle = '#64748b';
+      coilCtx.lineWidth = 2;
+      coilCtx.beginPath();
+      coilCtx.roundRect(cx - 180, cy - 35, 360, 70, 8);
+      coilCtx.fill();
+      coilCtx.stroke();
+
+      coilCtx.fillStyle = '#cbd5e1';
+      coilCtx.font = 'bold 15px sans-serif';
+      coilCtx.textAlign = 'center';
+      coilCtx.fillText('철심 (Iron Core)', cx, cy + 5);
+
+      // 코일 루프
+      const turns = 8;
+      const turnW = 40;
+      const startX = cx - (turns * turnW) / 2;
+
+      for (let i = 0; i < turns; i++) {
+        const x = startX + i * turnW;
+        coilCtx.strokeStyle = coilPower ? '#f59e0b' : '#78350f';
+        coilCtx.lineWidth = 7;
+        coilCtx.lineCap = 'round';
+
+        // 앞쪽 루프
+        coilCtx.beginPath();
+        coilCtx.arc(x + 15, cy, 48, -Math.PI / 2, Math.PI / 2, false);
+        coilCtx.stroke();
+      }
+
+      if (coilPower) {
+        coilAnim += 0.05;
+        const leftPole = coilFlipped ? 'S' : 'N';
+        const rightPole = coilFlipped ? 'N' : 'S';
+
+        // 형성된 N/S극 표시
+        coilCtx.font = 'bold 28px sans-serif';
+        coilCtx.textAlign = 'center';
+        coilCtx.textBaseline = 'middle';
+
+        // Left pole box
+        coilCtx.fillStyle = coilFlipped ? '#2563eb' : '#ef4444';
+        coilCtx.beginPath();
+        coilCtx.roundRect(cx - 240, cy - 35, 50, 70, 8);
+        coilCtx.fill();
+        coilCtx.fillStyle = '#fff';
+        coilCtx.fillText(leftPole, cx - 215, cy);
+
+        // Right pole box
+        coilCtx.fillStyle = coilFlipped ? '#ef4444' : '#2563eb';
+        coilCtx.beginPath();
+        coilCtx.roundRect(cx + 190, cy - 35, 50, 70, 8);
+        coilCtx.fill();
+        coilCtx.fillStyle = '#fff';
+        coilCtx.fillText(rightPole, cx + 215, cy);
+
+        // 코일 내부 관통 자기력선
+        coilCtx.strokeStyle = 'rgba(59, 130, 246, 0.7)';
+        coilCtx.lineWidth = 2.5;
+        for (let dy = -20; dy <= 20; dy += 20) {
+          coilCtx.beginPath();
+          coilCtx.moveTo(cx - 260, cy + dy);
+          coilCtx.lineTo(cx + 260, cy + dy);
+          coilCtx.stroke();
+
+          // 화살표
+          const dir = coilFlipped ? 1 : -1;
+          for (let k = -2; k <= 2; k++) {
+            const ax = cx + k * 80 + (coilAnim * 20 * dir) % 80;
+            if (ax > cx - 240 && ax < cx + 240) {
+              coilCtx.fillStyle = '#60a5fa';
+              coilCtx.beginPath();
+              coilCtx.moveTo(ax + 8 * dir, cy + dy);
+              coilCtx.lineTo(ax - 6 * dir, cy + dy - 5);
+              coilCtx.lineTo(ax - 6 * dir, cy + dy + 5);
+              coilCtx.fill();
+            }
+          }
+        }
+      } else {
+        coilCtx.fillStyle = '#94a3b8';
+        coilCtx.font = 'bold 16px sans-serif';
+        coilCtx.textAlign = 'center';
+        coilCtx.fillText('⚡ 전원을 켜면 전자석이 활성화됩니다.', cx, cy + 120);
+      }
+
+      requestAnimationFrame(drawCoilSim);
+    }
+    drawCoilSim();
+  </script>
+</body>
+</html>

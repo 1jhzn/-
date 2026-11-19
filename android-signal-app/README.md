@@ -20,6 +20,7 @@
 ```bash
 cd android-signal-app
 ./gradlew assembleDebug          # 결과: app/build/outputs/apk/debug/app-debug.apk
+./gradlew testDebugUnitTest      # 화면 실행 스모크 테스트 + 제조사/거리 계산 테스트
 ```
 
 Android Studio(2023.1 이상)에서는 이 폴더를 그대로 열고 Run 하면 됩니다. (JDK 17, Android SDK 34)

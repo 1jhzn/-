@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -38,6 +40,20 @@ android {
     androidResources {
         noCompress += listOf("csv")
     }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all { test ->
+            // Robolectric caches its Android runtime under user.home. In sandboxes where
+            // that path is not writable, point it at the module build directory instead.
+            val home = System.getProperty("user.home").orEmpty()
+            if (home.isEmpty() || !File(home).canWrite()) {
+                val fallback = layout.buildDirectory.dir("robolectric-home").get().asFile
+                fallback.mkdirs()
+                test.systemProperty("user.home", fallback.absolutePath)
+            }
+        }
+     }
 }
 
 dependencies {
@@ -45,4 +61,8 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.12.2")
+    testImplementation("androidx.test:core:1.5.0")
 }

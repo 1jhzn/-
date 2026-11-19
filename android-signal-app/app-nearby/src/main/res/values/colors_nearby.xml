@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Bluetooth is blue, Wi-Fi is green: the two radios must be told apart at a glance,
+         both on the radar and in the legend under it. -->
+    <color name="nearby_ble">#38BDF8</color>
+    <color name="nearby_wifi">#34D399</color>
+    <color name="nearby_measured">#E9F1F8</color>
+    <color name="nearby_label_bg">#E60D141D</color>
+</resources>

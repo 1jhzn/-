@@ -55,7 +55,9 @@ class DetailDialogTest {
     private fun openDetail(signal: Signal): android.app.Dialog {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
-        val method = MainActivity::class.java.getDeclaredMethod("showDetails", Signal::class.java)
+        // The card is opened by the shared screen class; MainActivity only supplies a layout.
+        val method = SignalRadarActivity::class.java
+            .getDeclaredMethod("showDetails", Signal::class.java)
         method.isAccessible = true
         method.invoke(activity, signal)
         return ShadowDialog.getLatestDialog()

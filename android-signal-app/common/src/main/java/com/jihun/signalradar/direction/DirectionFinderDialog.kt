@@ -32,7 +32,12 @@ class DirectionFinderDialog(
     context: Context,
     private val signal: Signal,
     private val liveSignal: () -> Signal?,
-    private val requestFreshWifiScan: () -> Boolean
+    private val requestFreshWifiScan: () -> Boolean,
+    /**
+     * Told the bearing the moment a peak is found (null when the sweep is reset).
+     * The 10 m radar uses it to place this device at the direction that was measured.
+     */
+    private val onBearingMeasured: (Float?) -> Unit = {}
 ) : Dialog(context, R.style.Theme_SignalRadar_Dialog) {
 
     private val tracker = SignalDirectionTracker()
@@ -59,6 +64,8 @@ class DirectionFinderDialog(
     private var wasAligned = false
     private var lastBuzz = 0L
     private var smoothHeading: Float? = null
+    private var reportedBearing: Float? = null
+    private var bearingReported = false
 
     private val tick = object : Runnable {
         override fun run() {
@@ -194,6 +201,8 @@ class DirectionFinderDialog(
         val peakAzimuth = tracker.peakAzimuth
         val hasCompass = compass.isSupported
 
+        reportBearing(peakAzimuth)
+
         radar.heading = heading ?: 0f
         radar.peakAzimuth = peakAzimuth
         radar.sectorPeaks = FloatArray(SignalDirectionTracker.SECTORS) { index ->
@@ -253,6 +262,14 @@ class DirectionFinderDialog(
         renderTrend()
         renderPhone(heading, hasCompass)
         renderHint()
+    }
+
+    /** Hand a changed bearing to the caller once, not on every 200 ms tick. */
+    private fun reportBearing(azimuth: Float?) {
+        if (bearingReported && azimuth == reportedBearing) return
+        bearingReported = true
+        reportedBearing = azimuth
+        onBearingMeasured(azimuth)
     }
 
     private fun renderTrend() {

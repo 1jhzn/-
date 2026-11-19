@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Under the launcher icon this has to be distinguishable from 전파 감지기. -->
+    <string name="app_name_nearby">전파 감지기 (내 주변)</string>
+</resources>

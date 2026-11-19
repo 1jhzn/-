@@ -22,6 +22,16 @@ class SignalRepository(context: Context) {
 
     /** Smoothed level per signal id, so a distance never jumps on one noisy packet. */
     private val smoothed = HashMap<String, Float>()
+
+    /**
+     * Compass bearing measured for a signal by "🧭 방향 찾기", in degrees from north.
+     *
+     * Only a hand-held sweep can tell a radio's direction, so this stays empty until the
+     * user actually walks around the signal. The 10 m radar draws a device with a bearing
+     * at its real direction and everything else at a placeholder angle, and the difference
+     * is visible on purpose.
+     */
+    private val bearings = HashMap<String, Float>()
     private val lock = Any()
 
     private var baselineSavedAt = 0L
@@ -89,6 +99,7 @@ class SignalRepository(context: Context) {
                 if (now - signal.lastSeen > limit) {
                     iterator.remove()
                     smoothed.remove(signal.id)
+                    bearings.remove(signal.id)
                 }
             }
         }
@@ -151,6 +162,20 @@ class SignalRepository(context: Context) {
             )
         }
     }
+
+    /**
+     * Remember (or forget, with null) the direction measured for one signal.
+     * A reset inside the direction finder reports null, so the radar stops claiming a
+     * direction the user just cleared.
+     */
+    fun setBearing(id: String, azimuth: Float?) {
+        synchronized(lock) {
+            if (azimuth == null) bearings.remove(id) else bearings[id] = azimuth
+        }
+    }
+
+    /** Measured compass bearing for a signal, or null while it has not been measured. */
+    fun bearing(id: String): Float? = synchronized(lock) { bearings[id] }
 
     /** Forget one signal so it stops showing up as new ("이 신호는 무시"). */
     fun addToBaseline(id: String, rssi: Int) {

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The bottom bar of the two tabs: surface colour with a one pixel hairline on top. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/surface" />
+        </shape>
+    </item>
+    <item
+        android:height="1dp"
+        android:gravity="top">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/stroke" />
+        </shape>
+    </item>
+</layer-list>

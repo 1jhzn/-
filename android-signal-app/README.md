@@ -7,6 +7,37 @@
 - 읽은 신호는 폰 밖으로 보내지 않습니다. 인터넷 권한 자체를 쓰지 않습니다.
 - 기준 저장(`기준 저장`)을 한 번 눌러 두면, 그다음부터 **처음 잡히는 신호**와 **세기가 확 오른 신호**만 따로 표시합니다.
 
+이 폴더는 **앱 두 개**를 만듭니다. 하나는 원래의 `전파 감지기`(`com.jihun.signalradar`),
+다른 하나는 `전파 감지기 (내 주변)`(`com.jihun.signalradar.nearby`)입니다. 패키지가 달라서
+**지웠다 다시 깔 필요 없이 나란히 설치**됩니다.
+
+## 내 주변 앱 v1.0 (2026-11-19)
+
+같은 전파 읽기 기능에 **10m 반경 원형 레이더**를 더한 별도 APK입니다.
+
+- **하단 탭 `📏 거리` / `📡 내 주변`**: 예전 화면 아래 빈 공간에 있던 안내 문구 자리를 없애고,
+  두 버튼을 하단 탭 바(높이 62dp, 선택된 탭은 청록색 + 밑줄)로 바꿨습니다. 누를 때마다 화면이 전환됩니다.
+  `📏 거리` 탭은 v1.2 화면(요약·`스캔 시작`·`기준 저장`·필터 칩·신호 목록·상세 창·`🧭 방향 찾기`·
+  `🔍 기기 이름 더 읽어오기`)을 그대로 씁니다.
+- **10m 원형 레이더**: 중심이 `나 (0m)`이고 `2m`·`5m`·`10m` 동심원 눈금이 있습니다. 추정 거리가
+  **10.5m 이하**인 블루투스·와이파이만 점으로 찍고(기지국은 거리를 알 수 없어 제외),
+  중심에서의 반지름은 `거리 ÷ 10m` 비율입니다. 20dp보다 가까운 기기는 `나` 표시를 가리지 않도록
+  20dp 위치에 그립니다.
+- **종류 구분**: 블루투스는 **파랑(#38BDF8)**, 와이파이는 **초록(#34D399)** 점입니다. 점 옆 라벨은
+  `이름` + `추정 종류 · 거리`(예: `에어팟 · 0.6m`, `공유기 · 4.1m`) 두 줄이고, 종류는
+  `identify/DeviceType.kt`가 `Signal.kind`를 에어팟·버즈·공유기·핫스팟·추적기·워치·스마트폰 등으로 줄인 값입니다.
+  레이더 아래 범례에 `● 블루투스 ● 와이파이`, `◉ 방향 측정됨 ◌ 방향 미측정`이 있습니다.
+- **방향**: `Compass` 센서와 연결되어 폰을 돌리면 레이더 판이 함께 돌아갑니다(화면 위쪽 = 폰이 보는 쪽,
+  북/동/남/서 글자는 항상 똑바로). 상단에 `폰이 보는 방향: 북동쪽 12°`처럼 현재 방위각이 나옵니다.
+  기기별로 `🧭 방향 찾기`로 피크 방위가 측정되면 `SignalRepository`에 그 방위가 저장되고, 레이더는 그 기기를
+  **실제 측정 방위에 진한 점 + 중심에서 뻗는 선**으로 그립니다. 아직 재지 않은 기기는 주소 기반의 고정된
+  자리(15° 슬롯)에 **점선 테두리의 연한 점**으로 그려서, `"진한 점은 방향 측정됨 · 연한 점은 눌러서 방향 찾기"`로
+  구분해 안내합니다. 재기 전에는 방향을 알 수 없다는 사실을 숨기지 않습니다.
+- **터치**: 레이더의 점이나 아래 `10m 이내 기기` 목록을 누르면 기존 상세 카드가 열리고, 거기서
+  `🧭 방향 찾기`·`🔍 기기 이름 더 읽어오기`를 그대로 쓸 수 있습니다. 스캔 상태는 두 탭이 공유하며
+  `내 주변` 탭에도 `▶ 스캔 시작` / `■ 스캔 중지` 버튼과 상태 배지가 있습니다.
+- 안내 문구: `내 10m 안 기기 O개`, `신호 세기 기반 대략 거리예요 · 벽/사람에 따라 오차가 있어요`.
+
 ## v1.2 (2026-11-19)
 
 - **방향이 엉뚱한 곳을 가리키던 문제 수정**: 레이더의 열 지도 호(arc)가 `Canvas.drawArc` 기준(3시 방향 0°)으로 그려지면서 실제 측정 방향보다 **90° 돌아가게** 표시되던 버그를 고쳤습니다. 또 섹터 인덱스는 왼쪽 경계 기준, 호는 중심 기준으로 계산해 **15°씩 어긋나던** 것도 섹터를 0°/30°/60° 중심으로 통일해 맞췄습니다.
@@ -37,11 +68,13 @@
 
 ```bash
 cd android-signal-app
-./gradlew assembleDebug          # 결과: app/build/outputs/apk/debug/app-debug.apk
-./gradlew testDebugUnitTest      # 화면 실행 스모크 테스트 + 제조사/거리 계산 테스트
+./gradlew :app:assembleDebug            # 전파 감지기        → app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app-nearby:assembleDebug     # 전파 감지기 (내 주변) → app-nearby/build/outputs/apk/debug/app-nearby-debug.apk
+./gradlew assembleDebug                 # 둘 다
+./gradlew testDebugUnitTest             # 두 앱의 테스트(화면 실행·거리 계산·레이더 계산)
 ```
 
-Android Studio(2023.1 이상)에서는 이 폴더를 그대로 열고 Run 하면 됩니다. (JDK 17, Android SDK 34)
+Android Studio(2023.1 이상)에서는 이 폴더를 그대로 열고 원하는 모듈을 Run 하면 됩니다. (JDK 17, Android SDK 34)
 
 ## 앱 사용법
 
@@ -70,22 +103,38 @@ Android Studio(2023.1 이상)에서는 이 폴더를 그대로 열고 Run 하면
 
 ```
 android-signal-app/
-├── app/src/main/java/com/jihun/signalradar/
-│   ├── MainActivity.kt          화면·권한·새 신호 알림
-│   ├── SignalRepository.kt      실시간 신호 + 기준(baseline) 저장
-│   ├── SignalAdapter.kt         목록 표시
-│   ├── SignalApp.kt             시작 시 제조사 표 로딩
-│   ├── identify/VendorDb.kt     OUI / Bluetooth SIG 표
-│   ├── identify/Classifier.kt   기기 추정·대역·거리 계산
-│   ├── scan/BleScanner.kt       BluetoothLeScanner 스캔
-│   ├── scan/WifiScanner.kt      WifiManager 스캔 결과
-│   └── scan/CellScanner.kt      기지국 정보
+├── common/src/main/               두 앱이 함께 쓰는 코드·리소스 (복사본 아님)
+│   ├── java/com/jihun/signalradar/
+│   │   ├── SignalRadarActivity.kt  거리 화면 전체: 권한·스캔·목록·상세·방향 찾기
+│   │   ├── SignalRepository.kt     실시간 신호 + 기준(baseline) + 측정된 방위 저장
+│   │   ├── SignalAdapter.kt        목록 표시
+│   │   ├── SignalApp.kt            시작 시 제조사 표 로딩
+│   │   ├── identify/VendorDb.kt    OUI / Bluetooth SIG 표
+│   │   ├── identify/Classifier.kt  기기 추정·대역·거리 계산
+│   │   ├── identify/DeviceType.kt  기기 종류를 레이더 라벨용 짧은 이름으로
+│   │   ├── nearby/NearbyRadarMath.kt  10m 안 기기 고르기·반지름·가짜 방위 계산
+│   │   ├── direction/              나침반·방향 찾기·레이더 컴퍼스 뷰
+│   │   ├── model/Signal.kt
+│   │   └── scan/                   BLE·와이파이·기지국 스캐너, GATT 이름 읽기
+│   ├── res/                        공용 레이아웃(item_signal, dialog_*, drawable, values)
+│   └── assets/                     oui.csv, ble_companies.csv
+├── app/                           전파 감지기 (com.jihun.signalradar)
+│   └── src/main/  MainActivity.kt(레이아웃만 지정) + activity_main.xml + manifest
+├── app-nearby/                    전파 감지기 (내 주변) (com.jihun.signalradar.nearby)
+│   └── src/main/
+│       ├── java/.../nearby/NearbyRadarActivity.kt  탭·나침반·레이더 연결
+│       ├── java/.../nearby/NearbyRadarView.kt      Canvas로 그리는 10m 레이더
+│       └── res/  activity_nearby, content_distance, page_nearby, 아이콘, 색
 └── GITHUB_WORKFLOW_build-apk.yml  → 저장소 `.github/workflows/build-apk.yml` 로 복사
 ```
 
+두 모듈 모두 `common/src/main/{java,res,assets}`를 자기 소스 디렉터리로 함께 읽습니다.
+`app-nearby`는 `applicationId`가 달라 같은 폰에 동시에 설치됩니다.
+
 ## 한계
 
-- 신호의 **방향**은 알려줄 수 없습니다(폰 한 대의 안테나로는 불가). 제조사·종류·거리 추정으로 알려줍니다.
+- 신호의 **방향**은 폰 한 대의 안테나로 저절로 알 수 없습니다. `🧭 방향 찾기`로 한 바퀴 돌려 재야 하며,
+  재지 않은 기기는 `내 주변` 레이더에 점선(미측정)으로 표시됩니다.
 - 거리는 RSSI 기반 추정값이라 벽·몸 위치에 따라 달라집니다.
 - Wi-Fi 스캔은 안드로이드가 2분에 몇 번으로 제한해서, 목록 갱신이 몇 초 늦을 수 있습니다.
 - 앱이 화면에 떠 있는 동안만 스캔합니다(백그라운드 상시 감지는 배터리 때문에 넣지 않았습니다).

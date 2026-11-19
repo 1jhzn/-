@@ -43,9 +43,16 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK
+      - name: Upload APK (전파 감지기)
         uses: actions/upload-artifact@v4
         with:
           name: signal-detector-debug-apk
           path: android-signal-app/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload APK (전파 감지기 · 내 주변)
+        uses: actions/upload-artifact@v4
+        with:
+          name: signal-detector-nearby-debug-apk
+          path: android-signal-app/app-nearby/build/outputs/apk/debug/app-nearby-debug.apk
           if-no-files-found: error

@@ -17,6 +17,15 @@ android {
         versionName = "1.2"
     }
 
+    // `common/` is the code and the resources both this app and :app-nearby run.
+    sourceSets {
+        getByName("main") {
+            java.srcDirs("src/main/java", "../common/src/main/java")
+            res.srcDirs("src/main/res", "../common/src/main/res")
+            assets.srcDirs("../common/src/main/assets")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

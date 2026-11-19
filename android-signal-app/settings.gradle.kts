@@ -22,3 +22,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "SignalRadar"
 include(":app")
+// The second, separately installable APK (package com.jihun.signalradar.nearby). It shares
+// the scanning code with :app through source directories instead of a copy.
+include(":app-nearby")

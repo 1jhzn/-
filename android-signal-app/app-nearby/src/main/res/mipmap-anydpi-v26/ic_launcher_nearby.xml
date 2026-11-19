@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Same family as 전파 감지기, but three rings and two coloured dots: this is the app with
+     the 10 m radar. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_bg" />
+    <foreground android:drawable="@drawable/ic_launcher_nearby_foreground" />
+</adaptive-icon>

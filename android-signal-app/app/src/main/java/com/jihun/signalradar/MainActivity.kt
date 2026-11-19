@@ -1,7 +1,10 @@
 package com.jihun.signalradar
 
 import android.Manifest
+import android.app.Dialog
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -15,10 +18,10 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.provider.Settings
 import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
@@ -26,10 +29,12 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.jihun.signalradar.direction.DirectionFinderDialog
 import com.jihun.signalradar.identify.Classifier
+import com.jihun.signalradar.identify.DeviceName
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
 import com.jihun.signalradar.scan.BleScanner
 import com.jihun.signalradar.scan.CellScanner
+import com.jihun.signalradar.scan.GattNameReader
 import com.jihun.signalradar.scan.WifiScanner
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -452,53 +457,209 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDetails(signal: Signal) {
-        val body = buildString {
-            append("종류: ").append(signal.source.label).append('\n')
-            signal.vendor?.let { append("제조사: ").append(it).append('\n') }
-            signal.kind?.let { append("추정: ").append(it).append('\n') }
-            val level = signal.smoothedRssi?.roundToInt() ?: signal.rssi
-            append("신호 세기: ").append(level).append(" dBm")
-            if (level != signal.rssi) append(" (순간 ").append(signal.rssi).append(" dBm)")
-            append('\n')
-            signal.txPower?.let { append("송신 세기(1m 기준): ").append(it).append(" dBm\n") }
-            Classifier.distanceLabel(
-                signal.smoothedRssi ?: signal.rssi.toFloat(),
-                signal.source,
-                signal.txPower,
-                signal.frequencyMhz
-            )?.let {
-                append("대략 거리: ").append(it)
-                    .append(" (신호 세기로 계산한 어림값 · 벽이나 사람에 따라 달라져요)\n")
+        val dialog = Dialog(this, R.style.Theme_SignalRadar_Dialog)
+        dialog.setContentView(R.layout.dialog_detail)
+
+        val title = dialog.findViewById<TextView>(R.id.detailTitle)
+        val subtitle = dialog.findViewById<TextView>(R.id.detailSubtitle)
+        val body = dialog.findViewById<TextView>(R.id.detailBody)
+        val badges = dialog.findViewById<TextView>(R.id.detailBadges)
+        val gattResult = dialog.findViewById<TextView>(R.id.detailGattResult)
+        val gattButton = dialog.findViewById<TextView>(R.id.detailGattButton)
+        val direction = dialog.findViewById<TextView>(R.id.detailDirection)
+        val ignore = dialog.findViewById<TextView>(R.id.detailIgnore)
+        val close = dialog.findViewById<TextView>(R.id.detailClose)
+
+        var current = signal
+        fun render(view: Signal) {
+            title.text = view.title
+            subtitle.text = listOfNotNull(
+                view.source.label,
+                view.vendor ?: view.kind,
+                view.address
+            ).joinToString(" · ")
+            body.text = detailText(view)
+            val mine = if (view.source == SignalSource.BLE) {
+                DeviceName.badgeText(view.isConnected, view.isBonded)
+            } else {
+                null
             }
-            append("주소: ").append(signal.address).append('\n')
-            append("처음 잡힘: ").append(timeText(signal.firstSeen)).append('\n')
-            append("마지막: ").append(timeText(signal.lastSeen)).append('\n')
-            signal.baselineRssi?.let {
-                append("기준 세기: ").append(it).append(" dBm")
-            }
-            if (signal.isNew) {
-                append("\n\n평소 기준에 없던 신호예요. 처음 나타난 신호라면 ‘이 신호는 무시’를 눌러 기준에 넣을 수 있어요.")
+            if (mine != null) {
+                badges.text = mine
+                badges.visibility = View.VISIBLE
+            } else {
+                badges.visibility = View.GONE
             }
         }
+        render(current)
 
-        val builder = AlertDialog.Builder(this)
-            .setTitle(signal.title)
-            .setMessage(body)
-            .setPositiveButton("이 신호는 무시") { _, _ ->
-                repo.addToBaseline(signal.id, signal.rssi)
-                newAlerted.remove(signal.id)
-                lastSignature = null
-                toast("‘${signal.title}’을(를) 기준에 넣었어요")
-                refresh()
+        var reader: GattNameReader? = null
+        val canReadName = signal.source == SignalSource.BLE && MAC_PATTERN.matches(signal.address.uppercase())
+        if (signal.source == SignalSource.BLE) {
+            gattButton.visibility = View.VISIBLE
+            if (!canReadName) {
+                gattButton.text = "🔍  기기 이름 더 읽어오기"
             }
-            .setNegativeButton("닫기", null)
+        } else {
+            gattButton.visibility = View.GONE
+        }
 
-        // Base stations have no meaningful direction from a single phone, so the
-        // compass finder is only offered for bluetooth and Wi-Fi.
+        gattButton.setOnClickListener {
+            val device = if (canReadName) bluetoothDevice(current.address) else null
+            if (device == null) {
+                gattResult.visibility = View.VISIBLE
+                gattResult.text = if (signal.source != SignalSource.BLE) {
+                    "블루투스 기기에서만 이름을 더 읽어올 수 있어요."
+                } else {
+                    "이 기기는 주소가 숨겨져 있어 폰에서 직접 연결할 수 없어요."
+                }
+                return@setOnClickListener
+            }
+            gattButton.isEnabled = false
+            gattButton.text = "🔍  이름 읽는 중… (최대 8초)"
+            gattResult.visibility = View.VISIBLE
+            gattResult.text = "GATT 연결 중…"
+            reader?.cancel()
+            reader = GattNameReader(
+                this,
+                onStatus = { status -> gattResult.text = status },
+                onResult = { result ->
+                    gattButton.isEnabled = true
+                    when (result) {
+                        is GattNameReader.Result.Found -> {
+                            repo.updateGattNames(signal.id, result.deviceName, result.manufacturer)
+                            current = repo.find(signal.id) ?: current
+                            render(current)
+                            gattResult.text = buildString {
+                                append("기기가 직접 알려 준 정보\n")
+                                append("· 기기 이름(0x2A00): ")
+                                append(result.deviceName ?: "공개 안 함").append('\n')
+                                append("· 제조사(0x2A29): ")
+                                append(result.manufacturer ?: "공개 안 함")
+                            }
+                            gattButton.text = "🔍  다시 읽어오기"
+                        }
+                        is GattNameReader.Result.Failed -> {
+                            gattResult.text = result.message
+                            gattButton.text = "🔍  다시 시도"
+                        }
+                    }
+                }
+            ).also { it.read(device) }
+        }
+
         if (signal.source != SignalSource.CELL) {
-            builder.setNeutralButton("🧭 방향 찾기") { _, _ -> openDirectionFinder(signal) }
+            direction.visibility = View.VISIBLE
+            direction.setOnClickListener {
+                dialog.dismiss()
+                openDirectionFinder(current)
+            }
         }
-        builder.show()
+
+        ignore.setOnClickListener {
+            val live = repo.find(signal.id) ?: current
+            repo.addToBaseline(signal.id, live.rssi)
+            newAlerted.remove(signal.id)
+            lastSignature = null
+            toast("‘${signal.title}’을(를) 기준에 넣었어요")
+            refresh()
+            dialog.dismiss()
+        }
+
+        close.setOnClickListener { dialog.dismiss() }
+        dialog.findViewById<TextView>(R.id.detailCloseTop).setOnClickListener { dialog.dismiss() }
+
+        dialog.setOnDismissListener { reader?.cancel() }
+        dialog.setOnShowListener { shown ->
+            val window = (shown as? Dialog)?.window ?: return@setOnShowListener
+            val metrics = resources.displayMetrics
+            val margin = (14 * metrics.density).toInt()
+            val width = (metrics.widthPixels - margin * 2)
+                .coerceAtMost((metrics.widthPixels * 0.96f).toInt())
+            window.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+            window.decorView.post {
+                // A long detail list must scroll inside the card instead of pushing the
+                // buttons off the bottom of the screen.
+                val scroll = dialog.findViewById<View>(R.id.detailScroll)
+                val limit = (metrics.heightPixels * 0.40f).toInt()
+                if (scroll.height > limit) {
+                    scroll.layoutParams = scroll.layoutParams.apply { height = limit }
+                    scroll.requestLayout()
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    /** Everything the detail card says, in the order a person reads it. */
+    private fun detailText(signal: Signal): String {
+        val text = StringBuilder()
+        text.append("종류: ").append(signal.source.label).append('\n')
+
+        if (signal.source == SignalSource.BLE) {
+            val ownName = signal.broadcastName
+            val cachedName = signal.systemName
+            when {
+                ownName != null -> {
+                    text.append("📢 방송명: ").append(ownName).append('\n')
+                    DeviceName.ownerHint(ownName)?.let { text.append("   ").append(it).append('\n') }
+                }
+                cachedName != null -> {
+                    text.append("📌 폰에 저장된 이름: ").append(cachedName)
+                        .append(" (기기는 이름을 방송하지 않아요)\n")
+                }
+                else -> text.append("이름을 방송하지 않아요 — 폰에 저장된 이름도 없어요.\n")
+            }
+            if (signal.gattName != null && signal.gattName != ownName && signal.gattName != cachedName) {
+                text.append("기기에서 읽은 이름: ").append(signal.gattName).append('\n')
+            }
+            if (signal.gattManufacturer != null) {
+                text.append("기기에서 읽은 제조사: ").append(signal.gattManufacturer).append('\n')
+            }
+        }
+
+        signal.vendor?.let { text.append("제조사: ").append(it).append('\n') }
+        signal.kind?.let { text.append("추정: ").append(it).append('\n') }
+        val level = signal.smoothedRssi?.roundToInt() ?: signal.rssi
+        text.append("신호 세기: ").append(level).append(" dBm")
+        if (level != signal.rssi) text.append(" (순간 ").append(signal.rssi).append(" dBm)")
+        text.append('\n')
+        signal.txPower?.let { text.append("송신 세기(1m 기준): ").append(it).append(" dBm\n") }
+        Classifier.distanceLabel(
+            signal.smoothedRssi ?: signal.rssi.toFloat(),
+            signal.source,
+            signal.txPower,
+            signal.frequencyMhz
+        )?.let {
+            text.append("대략 거리: ").append(it)
+                .append(" (신호 세기로 계산한 어림값 · 벽이나 사람에 따라 달라져요)\n")
+        }
+        text.append("주소: ").append(signal.address).append('\n')
+        text.append("처음 잡힘: ").append(timeText(signal.firstSeen)).append('\n')
+        text.append("마지막: ").append(timeText(signal.lastSeen))
+        signal.baselineRssi?.let {
+            text.append('\n').append("기준 세기: ").append(it).append(" dBm")
+        }
+        if (signal.isNew) {
+            text.append("\n\n평소 기준에 없던 신호예요. 처음 나타난 신호라면 ‘이 신호는 무시’를 눌러 기준에 넣을 수 있어요.")
+        }
+        return text.toString()
+    }
+
+    /** The BluetoothDevice behind an address, or null when the address is hidden. */
+    private fun bluetoothDevice(address: String): BluetoothDevice? {
+        val upper = address.uppercase()
+        if (!MAC_PATTERN.matches(upper)) return null
+        val manager = getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager ?: return null
+        return try {
+            manager.adapter?.getRemoteDevice(upper)
+        } catch (e: IllegalArgumentException) {
+            null
+        } catch (e: SecurityException) {
+            null
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private fun openDirectionFinder(signal: Signal) {
@@ -594,5 +755,8 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val REFRESH_MS = 800L
         private const val CELL_MS = 5_000L
+
+        /** AA:BB:CC:DD:EE:FF — a real address, not "주소 비공개". */
+        private val MAC_PATTERN = Regex("^([0-9A-F]{2}:){5}[0-9A-F]{2}$")
     }
 }

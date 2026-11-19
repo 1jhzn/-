@@ -3,6 +3,7 @@ package com.jihun.signalradar.scan
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
@@ -12,6 +13,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.jihun.signalradar.identify.Classifier
+import com.jihun.signalradar.identify.DeviceName
 import com.jihun.signalradar.identify.VendorDb
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
@@ -19,6 +21,10 @@ import com.jihun.signalradar.model.SignalSource
 /**
  * Passive BLE scan. Nothing is paired or connected: the phone just listens to the
  * advertisements every device around it already broadcasts.
+ *
+ * Alongside the scan the phone's own pairing list is consulted (every 15 seconds, not per
+ * packet) so a device can be labelled "🔗 내 폰 연결됨" or "📌 내 등록 기기" — the answer to
+ * "is this one of mine?" which the advertisement alone can never give.
  */
 class BleScanner(
     private val context: Context,
@@ -26,12 +32,21 @@ class BleScanner(
     private val onProblem: (String) -> Unit
 ) {
 
-    private val adapter: BluetoothAdapter? by lazy {
-        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-        manager?.adapter
+    private val manager: BluetoothManager? by lazy {
+        context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
     }
 
+    private val adapter: BluetoothAdapter? by lazy { manager?.adapter }
+
     private var scanning = false
+
+    /** Paired devices, keyed by upper-case MAC. */
+    private val bondedAddresses = HashSet<String>()
+
+    /** Devices with a live GATT / audio connection to this phone right now. */
+    private val connectedAddresses = HashSet<String>()
+
+    private var infoRefreshedAt = 0L
 
     val isSupported: Boolean
         get() = adapter != null
@@ -76,6 +91,7 @@ class BleScanner(
             onProblem("블루투스가 꺼져 있어요")
             return false
         }
+        refreshOwnDevices(force = true)
         val scanner = try {
             bluetooth.bluetoothLeScanner
         } catch (e: SecurityException) {
@@ -128,8 +144,73 @@ class BleScanner(
             PackageManager.PERMISSION_GRANTED
     }
 
+    private fun hasConnectPermission(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
+            PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+
+    /**
+     * Rebuild "which devices are mine" from the phone.
+     *
+     * Throttled because this is called for every advertising packet: the pairing list only
+     * changes when the user pairs something, so a few seconds of staleness is harmless.
+     * Every call is guarded — a revoked permission or a vendor Bluetooth stack that throws
+     * here must not stop the scan.
+     */
+    private fun refreshOwnDevices(force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - infoRefreshedAt < OWN_DEVICES_REFRESH_MS) return
+        infoRefreshedAt = now
+        if (!hasConnectPermission()) return
+        val bluetooth = adapter ?: return
+
+        try {
+            val fresh = HashSet<String>()
+            bluetooth.bondedDevices?.forEach { device ->
+                try {
+                    device.address?.let { fresh.add(it.uppercase()) }
+                } catch (e: SecurityException) {
+                    // Address hidden: skip this one only.
+                }
+            }
+            bondedAddresses.clear()
+            bondedAddresses.addAll(fresh)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "bondedDevices needs BLUETOOTH_CONNECT", e)
+        } catch (e: Exception) {
+            Log.w(TAG, "bondedDevices failed", e)
+        }
+
+        try {
+            val fresh = HashSet<String>()
+            for (profile in CONNECTED_PROFILES) {
+                val devices = try {
+                    manager?.getConnectedDevices(profile)
+                } catch (e: SecurityException) {
+                    null
+                } catch (e: Exception) {
+                    null
+                }
+                devices?.forEach { device ->
+                    try {
+                        device.address?.let { fresh.add(it.uppercase()) }
+                    } catch (e: SecurityException) {
+                        // Address hidden: skip this one only.
+                    }
+                }
+            }
+            connectedAddresses.clear()
+            connectedAddresses.addAll(fresh)
+        } catch (e: Exception) {
+            Log.w(TAG, "getConnectedDevices failed", e)
+        }
+    }
+
     private fun toSignal(result: ScanResult): Signal? {
         val device = result.device ?: return null
+        refreshOwnDevices()
 
         val address = try {
             device.address
@@ -170,11 +251,24 @@ class BleScanner(
         val vendor = VendorDb.koreanName(rawVendor)
         val kind = Classifier.bleKind(companyId, companyData)
 
+        // Two names exist: what the advertisement says, and what the phone has cached
+        // (pairing name). Both are the device's own name in practice, and either beats
+        // showing "(이름 없음)".
         val advertisedName = try {
-            record?.deviceName ?: device.name
-        } catch (e: SecurityException) {
             record?.deviceName
+        } catch (e: Exception) {
+            null
         }
+        val systemName = if (hasConnectPermission()) {
+            try {
+                device.name
+            } catch (e: SecurityException) {
+                null
+            }
+        } else {
+            null
+        }
+        val ownName = DeviceName.bestName(advertisedName, systemName)
 
         val services = try {
             record?.serviceUuids?.map { it.toString() }
@@ -192,9 +286,10 @@ class BleScanner(
             detailParts.add("제조사 정보 없음")
         }
 
+        val upperAddress = address?.uppercase()
         val now = System.currentTimeMillis()
         val stableAddress = if (address.isNullOrBlank() || address == "02:00:00:00:00:00") {
-            "$companyId:${advertisedName ?: "unknown"}"
+            "$companyId:${ownName ?: "unknown"}"
         } else {
             address
         }
@@ -202,17 +297,19 @@ class BleScanner(
         return Signal(
             id = "ble:$stableAddress",
             source = SignalSource.BLE,
-            title = advertisedName?.takeIf { it.isNotBlank() }
-                ?: kind
-                ?: "이름 없는 블루투스 기기",
+            title = DeviceName.title(advertisedName, systemName, kind),
             vendor = vendor,
             kind = kind,
             detail = detailParts.joinToString(" · "),
-            address = address?.uppercase() ?: "주소 비공개",
+            address = upperAddress ?: "주소 비공개",
             rssi = result.rssi,
             firstSeen = now,
             lastSeen = now,
-            txPower = txPower
+            txPower = txPower,
+            broadcastName = DeviceName.clean(advertisedName),
+            systemName = DeviceName.clean(systemName),
+            isConnected = upperAddress != null && connectedAddresses.contains(upperAddress),
+            isBonded = upperAddress != null && bondedAddresses.contains(upperAddress)
         )
     }
 
@@ -231,5 +328,14 @@ class BleScanner(
 
         /** Anything outside this window is the API's "unknown" marker, not a real level. */
         private val TX_POWER_RANGE = -100..20
+
+        /** Pairing / connection lists are rebuilt this often at most. */
+        private const val OWN_DEVICES_REFRESH_MS = 15_000L
+
+        private val CONNECTED_PROFILES = intArrayOf(
+            BluetoothProfile.GATT,
+            BluetoothProfile.A2DP,
+            BluetoothProfile.HEADSET
+        )
     }
 }

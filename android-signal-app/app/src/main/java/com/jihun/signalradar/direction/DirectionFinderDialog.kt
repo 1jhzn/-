@@ -46,6 +46,7 @@ class DirectionFinderDialog(
     private lateinit var bearing: TextView
     private lateinit var trend: TextView
     private lateinit var levels: TextView
+    private lateinit var progress: TextView
     private lateinit var distance: TextView
     private lateinit var phone: TextView
     private lateinit var hint: TextView
@@ -100,6 +101,7 @@ class DirectionFinderDialog(
         bearing = findViewById(R.id.dirBearing)
         trend = findViewById(R.id.dirTrend)
         levels = findViewById(R.id.dirLevels)
+        progress = findViewById(R.id.dirProgress)
         distance = findViewById(R.id.dirDistance)
         phone = findViewById(R.id.dirPhone)
         hint = findViewById(R.id.dirHint)
@@ -212,6 +214,17 @@ class DirectionFinderDialog(
                 "천천히 돌려 보세요 · 지금 ${SignalDirectionTracker.bearingText(heading)}"
             else -> "나침반 값을 기다리는 중…"
         }
+
+        // How much of the circle has been walked: a bearing cannot be trusted from one or
+        // two directions, and saying so is better than a needle that points nowhere.
+        progress.text = when {
+            !hasCompass -> ""
+            peakAzimuth != null ->
+                SignalDirectionTracker.progressLabel(tracker.measuredSectors) +
+                    " · 더 돌리면 더 정확해져요"
+            else -> SignalDirectionTracker.progressLabel(tracker.measuredSectors) +
+                " · ${SignalDirectionTracker.MIN_SECTORS_FOR_PEAK}곳 이상 재면 방향을 잡아요"
+        }
         bearing.setTextColor(
             ContextCompat.getColor(
                 context,
@@ -282,9 +295,11 @@ class DirectionFinderDialog(
     private fun renderHint() {
         val text = buildString {
             if (signal.source == SignalSource.WIFI) {
-                append("폰을 평평하게 들고 천천히 한 바퀴 돌려 보세요. 와이파이는 폰이 새로 읽는 주기에 맞춰 조금씩 갱신돼요.")
+                append("폰을 평평하게 들고 천천히 한 바퀴 돌려 보세요.\n")
+                append("와이파이는 갱신이 느려서 한 방향마다 2~3초 멈춰 재면 더 정확해요.")
             } else {
-                append("폰을 평평하게 들고 천천히 한 바퀴 돌려 보세요. 블루투스는 광고 패킷을 바로 읽어서 반응이 빨라요.")
+                append("폰을 평평하게 들고 천천히 한 바퀴 돌려 보세요. ")
+                append("블루투스는 광고 패킷을 바로 읽어서 반응이 빨라요.")
             }
             wifiNote?.let { append('\n').append(it) }
             append('\n').append("거리는 신호 세기로 계산한 어림값이라 벽·장애물에 따라 달라질 수 있어요.")

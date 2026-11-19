@@ -9,6 +9,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.jihun.signalradar.identify.Classifier
+import com.jihun.signalradar.identify.DeviceName
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
 import kotlin.math.roundToInt
@@ -55,6 +56,8 @@ class SignalAdapter(
         private val bar: View = view.findViewById(R.id.itemBarFill)
         private val badgeNew: TextView = view.findViewById(R.id.itemBadgeNew)
         private val badgeBoost: TextView = view.findViewById(R.id.itemBadgeBoost)
+        private val badgeMine: TextView = view.findViewById(R.id.itemBadgeMine)
+        private val broadcast: TextView = view.findViewById(R.id.itemBroadcast)
 
         init {
             view.setOnClickListener { onPositionClicked() }
@@ -97,6 +100,41 @@ class SignalAdapter(
 
             badgeNew.visibility = if (signal.isNew) View.VISIBLE else View.GONE
             badgeBoost.visibility = if (signal.isBoosted) View.VISIBLE else View.GONE
+
+            // "Is this one of mine?" — the pairing/connection list answers it, so it is
+            // worth a badge of its own rather than a line buried in the detail screen.
+            val mine = DeviceName.badgeText(signal.isConnected, signal.isBonded)
+            if (signal.source == SignalSource.BLE && mine != null) {
+                badgeMine.text = mine
+                badgeMine.visibility = View.VISIBLE
+            } else {
+                badgeMine.visibility = View.GONE
+            }
+
+            // A device that names itself is the strongest ownership hint there is
+            // ("지훈의 AirPods"), so the row says where the name came from instead of
+            // repeating it under the title.
+            val nameLine: String? = if (signal.source != SignalSource.BLE) {
+                null
+            } else {
+                val broadcastName = signal.broadcastName
+                val systemName = signal.systemName
+                when {
+                    broadcastName != null && broadcastName != signal.title ->
+                        DeviceName.broadcastLabel(broadcastName)
+                    broadcastName != null -> "📢 기기가 스스로 알려 준 이름"
+                    systemName != null && systemName != signal.title ->
+                        "📌 폰에 저장된 이름: $systemName"
+                    systemName != null -> "📌 폰이 기억하고 있는 이름"
+                    else -> null
+                }
+            }
+            if (nameLine != null) {
+                broadcast.text = nameLine
+                broadcast.visibility = View.VISIBLE
+            } else {
+                broadcast.visibility = View.GONE
+            }
 
             // Everything visible uses the smoothed level: a distance that jumps 3 m because
             // one packet was weak is worse than no distance at all.

@@ -32,5 +32,17 @@ data class Signal(
     /** Bluetooth transmitters advertise "how strong I am at 1 m" — far better than a guess. */
     val txPower: Int? = null,
     /** Wi-Fi channel frequency, so 5/6 GHz is not compared against 2.4 GHz levels. */
-    val frequencyMhz: Int? = null
+    val frequencyMhz: Int? = null,
+    /** The name the device itself gives out in its advertisement. */
+    val broadcastName: String? = null,
+    /** The name the phone has cached from pairing, when nothing was advertised. */
+    val systemName: String? = null,
+    /** This device is connected to the phone right now (GATT / A2DP / headset). */
+    val isConnected: Boolean = false,
+    /** This device is paired with the phone. */
+    val isBonded: Boolean = false,
+    /** Name read from the device's own GATT table, when the user asked for it. */
+    val gattName: String? = null,
+    /** Manufacturer name from the device's Device Information service, when read. */
+    val gattManufacturer: String? = null
 )

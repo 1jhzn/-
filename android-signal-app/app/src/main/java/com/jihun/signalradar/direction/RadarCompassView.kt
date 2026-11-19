@@ -241,7 +241,11 @@ class RadarCompassView @JvmOverloads constructor(
         for (index in 0 until SignalDirectionTracker.SECTORS) {
             val value = if (index < values.size) values[index] else Float.NaN
             if (value.isNaN() || value.isInfinite()) continue
-            val start = index * SignalDirectionTracker.SECTOR_DEG - SignalDirectionTracker.SECTOR_DEG / 2f + 1.2f
+            // Canvas.drawArc measures from 3 o'clock; every bearing here is a compass
+            // bearing measured from 12 o'clock, so the quarter turn has to be taken out —
+            // without it each arc lands 90° away from the direction it was measured in.
+            val start = index * SignalDirectionTracker.SECTOR_DEG -
+                SignalDirectionTracker.SECTOR_DEG / 2f - 90f + 1.2f
             val sweep = SignalDirectionTracker.SECTOR_DEG - 2.4f
             heatPaint.color = heatColor(value)
             arcRect.set(cx - band, cy - band, cx + band, cy + band)
@@ -272,7 +276,7 @@ class RadarCompassView @JvmOverloads constructor(
             cx + outer * 0.88f,
             cy + outer * 0.88f
         )
-        beamPath.arcTo(arcRect, beamLeft, beamRight - beamLeft, false)
+        beamPath.arcTo(arcRect, beamLeft - 90f, beamRight - beamLeft, false)
         beamPath.close()
         beamPaint.shader = RadialGradient(
             cx, cy, outer * 0.9f,

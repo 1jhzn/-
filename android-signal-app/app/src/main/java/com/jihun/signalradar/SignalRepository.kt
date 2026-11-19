@@ -46,7 +46,13 @@ class SignalRepository(context: Context) {
                 live[signal.id] = if (previous == null) {
                     signal.copy(firstSeen = signal.lastSeen)
                 } else {
-                    signal.copy(firstSeen = previous.firstSeen)
+                    // A name the user asked the device for stays put; a fresh packet
+                    // carries no GATT information and must not wipe it.
+                    signal.copy(
+                        firstSeen = previous.firstSeen,
+                        gattName = signal.gattName ?: previous.gattName,
+                        gattManufacturer = signal.gattManufacturer ?: previous.gattManufacturer
+                    )
                 }
             }
         }
@@ -133,6 +139,17 @@ class SignalRepository(context: Context) {
             Log.w(TAG, "could not persist baseline", e)
         }
         count
+    }
+
+    /** Store a name read from the device's own GATT table ("기기 이름 더 읽어오기"). */
+    fun updateGattNames(id: String, deviceName: String?, manufacturer: String?) {
+        synchronized(lock) {
+            val current = live[id] ?: return
+            live[id] = current.copy(
+                gattName = deviceName ?: current.gattName,
+                gattManufacturer = manufacturer ?: current.gattManufacturer
+            )
+        }
     }
 
     /** Forget one signal so it stops showing up as new ("이 신호는 무시"). */

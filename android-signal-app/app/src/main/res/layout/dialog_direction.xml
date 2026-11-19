@@ -60,6 +60,16 @@
         android:layout_marginTop="10dp" />
 
     <TextView
+        android:id="@+id/dirProgress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:text="측정 진행: 0/12 방향"
+        android:textColor="@color/text_muted"
+        android:textSize="10.5sp" />
+
+    <TextView
         android:id="@+id/dirAligned"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

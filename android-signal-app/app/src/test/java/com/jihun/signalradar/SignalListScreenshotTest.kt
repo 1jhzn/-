@@ -19,6 +19,7 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 /** Renders list rows into a PNG so the distance column can be checked by eye. */
+
 @Ignore("Visual preview only: remove this to render a PNG into build/previews")
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -47,7 +48,10 @@ class SignalListScreenshotTest {
             rssi: Int,
             smoothed: Float,
             txPower: Int? = null,
-            frequency: Int? = null
+            frequency: Int? = null,
+            broadcastName: String? = null,
+            connected: Boolean = false,
+            bonded: Boolean = false
         ) = Signal(
             id = id,
             source = source,
@@ -61,22 +65,31 @@ class SignalListScreenshotTest {
             lastSeen = 0L,
             smoothedRssi = smoothed,
             txPower = txPower,
-            frequencyMhz = frequency
+            frequencyMhz = frequency,
+            broadcastName = broadcastName,
+            isConnected = connected,
+            isBonded = bonded
         )
 
         adapter.submit(
             listOf(
                 signal(
-                    "ble:1", SignalSource.BLE, "AirPods Pro", "애플",
-                    "에어팟 · 서비스 배터리", "F8:1E:DF:12:34:56", -48, -50.2f, txPower = -52
+                    "ble:1", SignalSource.BLE, "지훈의 AirPods", "애플",
+                    "에어팟 · 서비스 배터리", "F8:1E:DF:12:34:56", -48, -50.2f, txPower = -52,
+                    broadcastName = "지훈의 AirPods", connected = true, bonded = true
                 ),
                 signal(
                     "wifi:1", SignalSource.WIFI, "iptime_5G", "ipTIME(EFM)",
                     "ipTIME 공유기 · 5GHz 149ch · WPA3", "00:08:9F:00:00:01", -62, -63.0f, frequency = 5745
                 ),
                 signal(
-                    "ble:2", SignalSource.BLE, "Galaxy Buds2", "삼성전자",
-                    "삼성 기기(갤럭시·버즈·워치)", "AA:BB:CC:DD:EE:FF", -74, -73.4f
+                    "ble:2", SignalSource.BLE, "민수의 Galaxy Buds", "삼성전자",
+                    "삼성 기기(갤럭시·버즈·워치)", "AA:BB:CC:DD:EE:FF", -74, -73.4f,
+                    broadcastName = "민수의 Galaxy Buds", bonded = true
+                ),
+                signal(
+                    "ble:3", SignalSource.BLE, "이름 없는 블루투스 기기", "제조사 미확인",
+                    "타일(Tile) · 서비스 없음", "02:00:00:00:00:00", -81, -80.5f
                 ),
                 signal(
                     "wifi:2", SignalSource.WIFI, "KT_GIGA_2G", "KT",

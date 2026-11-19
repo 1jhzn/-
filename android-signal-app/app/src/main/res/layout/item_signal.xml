@@ -81,6 +81,35 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/itemBroadcast"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="📢 방송명"
+            android:textColor="@color/amber"
+            android:textSize="11.5sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/itemBadgeMine"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:background="@drawable/bg_badge_mine"
+            android:paddingStart="7dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="7dp"
+            android:paddingBottom="2dp"
+            android:text="🔗 내 폰 연결됨"
+            android:textColor="#FEF3C7"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/itemVendor"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -16,6 +16,14 @@ import kotlin.math.sin
  * goes through an exponential moving average first; the peak direction is only allowed to
  * move on when a new direction is clearly stronger, which keeps the needle from dancing.
  *
+ * Two accuracy guards live here as well, because a hand-held "turn until it is loudest"
+ * hunt is easily fooled:
+ *  - A needle is not shown at all until at least [MIN_SECTORS_FOR_PEAK] of the 12
+ *    directions have been measured. One or two readings say almost nothing.
+ *  - Directions are compared after blending each sector with its two neighbours. A single
+ *    lone spike (a reflection off a wall, a body blocking the path) has to be clearly
+ *    stronger than a broad lobe before it can pull the needle to itself.
+ *
  * Pure Kotlin on purpose: no Android types, so the maths is unit-tested on the JVM.
  */
 class SignalDirectionTracker(
@@ -28,6 +36,7 @@ class SignalDirectionTracker(
     private val sectorCos = DoubleArray(SECTORS)
     private val sectorSin = DoubleArray(SECTORS)
     private val sectorWeight = DoubleArray(SECTORS)
+    private val sectorSeen = BooleanArray(SECTORS)
     private val history = ArrayDeque<Pair<Long, Float>>()
     private var bestSector = -1
 
@@ -47,6 +56,14 @@ class SignalDirectionTracker(
     var sampleCount: Int = 0
         private set
 
+    /** How many of the 12 directions have a reading; drives "측정 진행: 8/12 방향". */
+    var measuredSectors: Int = 0
+        private set
+
+    /** True once enough of the circle has been walked to trust a bearing. */
+    val hasPeak: Boolean
+        get() = peakAzimuth != null
+
     fun reset() {
         ema = null
         bestSector = -1
@@ -54,12 +71,14 @@ class SignalDirectionTracker(
         peakAzimuth = null
         lastSmoothed = null
         sampleCount = 0
+        measuredSectors = 0
         history.clear()
         for (i in 0 until SECTORS) {
             sectorPeak[i] = NO_VALUE
             sectorCos[i] = 0.0
             sectorSin[i] = 0.0
             sectorWeight[i] = 0.0
+            sectorSeen[i] = false
         }
     }
 
@@ -67,7 +86,7 @@ class SignalDirectionTracker(
 
     /** Highest smoothed level heard while the phone pointed into this sector, if any. */
     fun sectorValue(index: Int): Float? =
-        sectorPeak[index].takeIf { it > NO_VALUE }
+        sectorPeak[wrap(index)].takeIf { it > NO_VALUE }
 
     /** Feed one observation. [heading] is the phone's compass bearing, null when unknown. */
     fun onSample(rssi: Int, heading: Float?, now: Long): Float {
@@ -89,6 +108,10 @@ class SignalDirectionTracker(
         val azimuth = lastHeading
         if (azimuth != null) {
             val index = sectorOf(azimuth)
+            if (!sectorSeen[index]) {
+                sectorSeen[index] = true
+                measuredSectors++
+            }
             // Linear power as the weight: a reading 10 dB stronger counts ten times more,
             // which is what makes the heat map and the refined bearing line up.
             val weight = 10.0.pow(value.toDouble() / 10.0)
@@ -126,50 +149,111 @@ class SignalDirectionTracker(
     }
 
     private fun refreshPeak() {
+        if (measuredSectors < MIN_SECTORS_FOR_PEAK) {
+            // Too little of the circle seen: keep the level, hold the needle back.
+            bestSector = -1
+            peakAzimuth = null
+            peakRssi = strongestSectorLevel()
+            return
+        }
+
         var candidate = -1
-        var strongest = NO_VALUE
+        var bestScore = NO_VALUE
         for (i in 0 until SECTORS) {
-            if (sectorPeak[i] > strongest) {
-                strongest = sectorPeak[i]
+            val score = smoothedScore(i) ?: continue
+            if (score > bestScore) {
+                bestScore = score
                 candidate = i
             }
         }
-        if (candidate < 0) return
+        if (candidate < 0) {
+            peakAzimuth = null
+            return
+        }
+        val currentScore = if (bestSector >= 0) smoothedScore(bestSector) else null
         // Only jump to another direction when it is clearly stronger, otherwise the needle
         // would flip between two almost equal lobes every time the signal wobbles.
-        if (bestSector < 0 || strongest >= sectorPeak[bestSector] + PEAK_HYSTERESIS_DB) {
+        if (currentScore == null || bestScore >= currentScore + PEAK_HYSTERESIS_DB) {
             bestSector = candidate
         }
-        peakRssi = sectorPeak[bestSector]
+        peakRssi = sectorValue(bestSector)
         peakAzimuth = refinedAzimuth(bestSector)
     }
 
-    /** The best sector's own average bearing, nudged by its two neighbours. */
-    private fun refinedAzimuth(index: Int): Float? {
-        var x = 0.0
-        var y = 0.0
-        for (offset in -1..1) {
-            val i = wrap(index + offset)
-            if (sectorWeight[i] <= 0.0) continue
-            val factor = if (offset == 0) 1.0 else NEIGHBOUR_WEIGHT
-            val w = sectorWeight[i] * factor
-            x += w * (sectorCos[i] / sectorWeight[i])
-            y += w * (sectorSin[i] / sectorWeight[i])
+    /**
+     * A sector's level blended with its two neighbours, in dB.
+     *
+     * A direction surrounded by equally strong readings keeps its full value; a lone spike
+     * with nothing on either side pays [ISOLATION_DB], so a reflection has to be a lot
+     * stronger than a real lobe before it wins.
+     */
+    private fun smoothedScore(index: Int): Float? {
+        val center = sectorValue(index) ?: return null
+        val left = sectorValue(index - 1) ?: (center - ISOLATION_DB)
+        val right = sectorValue(index + 1) ?: (center - ISOLATION_DB)
+        return CENTER_WEIGHT * center + NEIGHBOUR_WEIGHT * (left + right)
+    }
+
+    private fun strongestSectorLevel(): Float? {
+        var strongest: Float? = null
+        for (i in 0 until SECTORS) {
+            val value = sectorValue(i) ?: continue
+            if (strongest == null || value > strongest) strongest = value
         }
-        if (x == 0.0 && y == 0.0) return null
-        return normalize(Math.toDegrees(atan2(y, x)).toFloat())
+        return strongest ?: lastSmoothed
+    }
+
+    /**
+     * The bearing inside the winning sector: where the phone actually pointed while the
+     * signal was loudest, nudged by a parabola through the two neighbouring sectors so the
+     * needle lands between sector centres instead of snapping to them.
+     */
+    private fun refinedAzimuth(index: Int): Float? {
+        val weight = sectorWeight[index]
+        if (weight <= 0.0) return null
+        val meanAzimuth = normalize(
+            Math.toDegrees(
+                atan2(sectorSin[index] / weight, sectorCos[index] / weight)
+            ).toFloat()
+        )
+        val center = sectorCenter(index)
+        val intra = signedDifference(center, meanAzimuth) * INTRA_WEIGHT
+        val shift = (intra + parabolicOffsetDegrees(index))
+            .coerceIn(-SECTOR_DEG / 2f, SECTOR_DEG / 2f)
+        return normalize(center + shift)
+    }
+
+    /** How far the true peak sits from the sector centre, in degrees, within ±15°. */
+    private fun parabolicOffsetDegrees(index: Int): Float {
+        val center = sectorValue(index) ?: return 0f
+        val left = sectorValue(index - 1) ?: return 0f
+        val right = sectorValue(index + 1) ?: return 0f
+        val denominator = left - 2f * center + right
+        // A flat top or a valley gives no usable peak position.
+        if (denominator >= -0.001f) return 0f
+        return (0.5f * (left - right) / denominator).coerceIn(-0.5f, 0.5f) * SECTOR_DEG
     }
 
     companion object {
         const val SECTORS = 12
         const val SECTOR_DEG = 360f / SECTORS
 
+        /** Directions that must be measured before a bearing is shown at all. */
+        const val MIN_SECTORS_FOR_PEAK = 4
+
         /** Within this many degrees of the peak counts as "pointing at it". */
         const val ALIGNED_DEG = 15f
 
         private const val NO_VALUE = Float.NEGATIVE_INFINITY
-        private const val PEAK_HYSTERESIS_DB = 1.0f
-        private const val NEIGHBOUR_WEIGHT = 0.35
+        private const val PEAK_HYSTERESIS_DB = 1.5f
+        private const val CENTER_WEIGHT = 0.5f
+        private const val NEIGHBOUR_WEIGHT = 0.25f
+
+        /** How much a direction with no neighbours on either side is discounted. */
+        private const val ISOLATION_DB = 6f
+
+        /** How much of the within-sector spread is trusted vs. the sector grid. */
+        private const val INTRA_WEIGHT = 1.0f
         private const val TREND_MIN_SPAN_MS = 3_000L
 
         fun normalize(degrees: Float): Float {
@@ -178,10 +262,23 @@ class SignalDirectionTracker(
             return value
         }
 
-        fun sectorOf(azimuth: Float): Int =
-            (normalize(azimuth) / SECTOR_DEG).toInt().coerceIn(0, SECTORS - 1)
+        /**
+         * Which 30° sector a bearing belongs to.
+         *
+         * Sectors are centred on 0°, 30°, 60° … so sector 0 covers 345°–15°. That matters:
+         * the radar draws each heat arc around `index * 30°`, and an index computed from the
+         * left edge of the sector instead would put every arc 15° away from where it was
+         * actually measured — the "it points slightly wrong" bug.
+         */
+        fun sectorOf(azimuth: Float): Int {
+            val shifted = normalize(azimuth + SECTOR_DEG / 2f)
+            return (shifted / SECTOR_DEG).toInt() % SECTORS
+        }
 
         fun sectorCenter(index: Int): Float = wrapStatic(index) * SECTOR_DEG
+
+        fun progressLabel(measured: Int): String =
+            "측정 진행: ${measured.coerceIn(0, SECTORS)}/$SECTORS 방향"
 
         fun circularDifference(a: Float, b: Float): Float {
             val diff = abs(normalize(a) - normalize(b))

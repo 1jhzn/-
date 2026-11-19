@@ -20,6 +20,7 @@ import java.io.File
  * Draws the finder dialog into a PNG so the radar can be looked at without a phone.
  * Uses Robolectric's native graphics, which is heavier than the ordinary unit tests.
  */
+
 @Ignore("Visual preview only: remove this to render a PNG into build/previews")
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

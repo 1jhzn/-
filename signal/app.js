@@ -1089,11 +1089,14 @@ function spawnTest() {
   state.devices.forEach(function (r) { if (r.test && r.name && r.name.charAt(0) !== '(') named.push(r); });
   if (named.length && Object.keys(state.baseline).length && Math.random() < 0.4) {
     var tg = named[Math.floor(Math.random() * named.length)];
-    var nextRssi = (tg.rssiSmooth == null ? -60 : tg.rssiSmooth) + (Math.random() < 0.5 ? -23 : 23);
-    ingest({
-      id: tg.id, name: tg.name, rssi: nextRssi, txPower: tg.txPower,
-      uuids: tg.uuids, bytes: tg.bytes, serviceData: tg.serviceData, device: null, test: true
-    });
+    var baseR = tg.rssiSmooth == null ? -70 : tg.rssiSmooth;
+    var target = Math.max(-95, Math.min(-35, baseR + (Math.random() < 0.5 ? -45 : 45)));
+    for (var q = 0; q < 3; q++) {
+      ingest({
+        id: tg.id, name: tg.name, rssi: target, txPower: tg.txPower,
+        uuids: tg.uuids, bytes: tg.bytes, serviceData: tg.serviceData, device: null, test: true
+      });
+    }
     toast('테스트: "' + tg.name + '"의 신호 세기가 바뀐 상황이에요');
     if ($('#tab-scan').hidden) switchTab('scan');
     return;

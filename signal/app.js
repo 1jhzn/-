@@ -518,7 +518,8 @@ function baselineMatch(rec) {
 function onFirstSight(rec) {
   var m = baselineMatch(rec);
   if (!m) {
-    if (Object.keys(state.baseline).length) {
+    // 기준이 없어도 테스트 신호는 알림이 어떻게 보이는지 바로 보여 준다
+    if (rec.test || Object.keys(state.baseline).length) {
       rec.isNew = true;
       addAlert('new', rec);
     }

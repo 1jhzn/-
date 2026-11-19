@@ -156,9 +156,9 @@ class DetailDialogTest {
         val results = ArrayList<GattNameReader.Result>()
         val reader = GattNameReader(context, { statuses.add(it) }, { results.add(it) })
         reader.read(device)
-        // A device that never answers must still end with an answer inside 1.5 seconds.
+        // A device that never answers must still end with an answer inside 3.5 seconds.
         org.robolectric.shadows.ShadowLooper.idleMainLooper(
-            2_000,
+            4_000,
             java.util.concurrent.TimeUnit.MILLISECONDS
         )
         reader.cancel()

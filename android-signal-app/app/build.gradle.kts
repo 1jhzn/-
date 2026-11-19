@@ -13,8 +13,8 @@ android {
         applicationId = "com.jihun.signalradar"
         minSdk = 26
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
     }
 
     // `common/` is the code and the resources both this app and :app-nearby run.

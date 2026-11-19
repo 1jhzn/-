@@ -13,8 +13,9 @@ import org.robolectric.annotation.Config
 
 /**
  * The "🔍 기기 이름 더 읽어오기" attempt must end as soon as the device answers, not after a
- * long wait: a refusal or a hang-up settles it immediately, the one read gets 0.8 s of its
- * own, and the whole budget is 1.5 s.
+ * long wait: a refusal or a hang-up settles it immediately, the one read gets 2 s of its own,
+ * and the whole budget is 3.5 s — long enough for the slow earphones and watches 지훈 found
+ * were cut off at 1.5 s.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])
@@ -55,21 +56,21 @@ class GattNameReaderTest {
     }
 
     @Test
-    fun the_whole_attempt_is_over_in_a_second_and_a_half() {
-        assertEquals(1_500L, GattNameReader.TIMEOUT_MS)
+    fun the_whole_attempt_is_over_in_three_and_a_half_seconds() {
+        assertEquals(3_500L, GattNameReader.TIMEOUT_MS)
     }
 
     @Test
-    fun the_single_name_read_gets_less_than_a_second() {
+    fun the_single_name_read_gets_two_seconds() {
         // AirPods and newer phones accept the connection and then never answer the read;
-        // 0.8 s is enough to tell "slow" from "silent".
-        assertEquals(800L, GattNameReader.READ_TIMEOUT_MS)
+        // 2 s is enough to tell "slow" from "silent" without cutting off a slow answer.
+        assertEquals(2_000L, GattNameReader.READ_TIMEOUT_MS)
         assertTrue(GattNameReader.READ_TIMEOUT_MS < GattNameReader.TIMEOUT_MS)
     }
 
     @Test
     fun the_progress_line_says_what_it_is_actually_doing() {
         assertEquals("기기 이름 읽는 중…", GattNameReader.READING_MESSAGE)
-        assertTrue(GattNameReader.TIMEOUT_MESSAGE.startsWith("1.5초 동안 응답이 없었어요."))
+        assertTrue(GattNameReader.TIMEOUT_MESSAGE.startsWith("3.5초 동안 응답이 없었어요."))
     }
 }

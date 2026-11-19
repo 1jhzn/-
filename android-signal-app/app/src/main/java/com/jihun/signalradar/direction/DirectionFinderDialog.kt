@@ -57,17 +57,19 @@ class DirectionFinderDialog(
     private var lastHint: String? = null
     private var wasAligned = false
     private var lastBuzz = 0L
+    private var smoothHeading: Float? = null
 
     private val tick = object : Runnable {
         override fun run() {
             if (!running) return
             val now = System.currentTimeMillis()
+            val heading = readHeading()
 
             val live = liveSignal()
             if (live != null && (live.lastSeen != lastSeenFed || live.rssi != lastRssiFed)) {
                 lastSeenFed = live.lastSeen
                 lastRssiFed = live.rssi
-                tracker.onSample(live.rssi, compass.heading, now)
+                tracker.onSample(live.rssi, heading, now)
             }
 
             if (signal.source == SignalSource.WIFI && now - lastWifiAsk >= WIFI_ASK_MS) {
@@ -80,7 +82,7 @@ class DirectionFinderDialog(
                 }
             }
 
-            render()
+            render(heading)
             handler.postDelayed(this, TICK_MS)
         }
     }
@@ -141,7 +143,7 @@ class DirectionFinderDialog(
         if (running) return
         running = true
         if (compass.isSupported) compass.start()
-        render()
+        render(readHeading())
         handler.removeCallbacks(tick)
         handler.post(tick)
     }
@@ -162,11 +164,29 @@ class DirectionFinderDialog(
         radar.sectorPeaks = null
         radar.aligned = false
         radar.invalidate()
-        render()
+        smoothHeading = null
+        render(readHeading())
     }
 
-    private fun render() {
-        val heading = compass.heading
+    /**
+     * The raw compass bearing wobbles by a few degrees even when the phone is still; a light
+     * circular filter keeps the needle and the "pointing at it" check from flickering.
+     */
+    private fun readHeading(): Float? {
+        val raw = compass.heading ?: return null
+        val previous = smoothHeading
+        val next = if (previous == null) {
+            raw
+        } else {
+            SignalDirectionTracker.normalize(
+                previous + SignalDirectionTracker.signedDifference(previous, raw) * HEADING_SMOOTHING
+            )
+        }
+        smoothHeading = next
+        return next
+    }
+
+    private fun render(heading: Float?) {
         val smoothed = tracker.smoothedRssi()
         val peak = tracker.peakRssi
         val peakAzimuth = tracker.peakAzimuth
@@ -296,5 +316,6 @@ class DirectionFinderDialog(
         private const val MIN_SAMPLES = 6
         private const val TREND_DB = 2f
         private const val BUZZ_COOLDOWN_MS = 2_200L
+        private const val HEADING_SMOOTHING = 0.25f
     }
 }

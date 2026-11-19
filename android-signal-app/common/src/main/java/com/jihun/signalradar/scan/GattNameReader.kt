@@ -19,16 +19,20 @@ import java.util.UUID
 /**
  * Reads a BLE device's own name, once, only when the user asks for it.
  *
- * Most of the time an advertisement already carries a name, but many earphones and
- * watches only answer the standard GATT characteristics: Device Name (0x2A00) under
- * Generic Access (0x1800), and Manufacturer Name (0x2A29) under Device Information
- * (0x180A). Connecting is a visible act to the other device, so this never runs on its
- * own — the detail screen calls [read] from a button, and the connection is closed on
- * every path (success, refusal, timeout, cancel) by [finish].
+ * Most of the time an advertisement already carries a name, but some earphones and watches
+ * only answer the standard GATT characteristic Device Name (0x2A00) under Generic Access
+ * (0x1800). Connecting is a visible act to the other device, so this never runs on its own —
+ * the detail screen calls [read] from a button, and the connection is closed on every path
+ * (success, refusal, timeout, cancel) by [finish].
  *
- * The 2.5 second budget and the honest "it blocked us" wording come from the fact that many
- * modern phones, AirPods and trackers refuse a connection from an unknown phone, and a
- * refusal already answers the question: waiting longer only makes the button feel broken.
+ * Only that one characteristic is read: Manufacturer Name (0x2A29) was a second round trip
+ * that cost time while the manufacturer is already known from the OUI / Bluetooth SIG tables.
+ *
+ * Two budgets keep the button from feeling broken: [TIMEOUT_MS] for the whole attempt, and
+ * [READ_TIMEOUT_MS] once the services are discovered, because many modern phones, AirPods and
+ * trackers accept the connection and then simply never answer a read that wants pairing.
+ * The result reaches the screen before the connection is torn down: `disconnect()` and
+ * `close()` take the BLE stack's synchronous lock, so they run on their own thread.
  */
 class GattNameReader(
     private val context: Context,
@@ -42,20 +46,23 @@ class GattNameReader(
     }
 
     private val handler = Handler(Looper.getMainLooper())
-    private val readQueue = ArrayDeque<BluetoothGattCharacteristic>()
-    private var gatt: BluetoothGatt? = null
-    private var finished = false
-    private var deviceName: String? = null
-    private var manufacturer: String? = null
 
+    @Volatile
+    private var gatt: BluetoothGatt? = null
+
+    @Volatile
+    private var finished = false
+
+    private var deviceName: String? = null
+
+    /** Whole-attempt budget: connect + discovery + the single name read. */
     private val timeout = Runnable {
-        finish(
-            if (deviceName != null || manufacturer != null) {
-                found()
-            } else {
-                Result.Failed("2.5초 동안 응답이 없었어요. ${DeviceName.BLOCKED_MESSAGE}")
-            }
-        )
+        finish(if (deviceName != null) found() else Result.Failed(TIMEOUT_MESSAGE))
+    }
+
+    /** Budget for the one read request after the services are known. */
+    private val readTimeout = Runnable {
+        finish(if (deviceName != null) found() else Result.Failed(READ_TIMEOUT_MESSAGE))
     }
 
     private val callback = object : BluetoothGattCallback() {
@@ -64,17 +71,11 @@ class GattNameReader(
             // A refusal (133 and friends) or a hang-up answers the question right away.
             // Waiting out the timeout after that is what made the button feel stuck.
             if (shouldStop(status, newState)) {
-                finish(
-                    if (deviceName != null || manufacturer != null) {
-                        found()
-                    } else {
-                        Result.Failed(DeviceName.BLOCKED_MESSAGE)
-                    }
-                )
+                finish(if (deviceName != null) found() else Result.Failed(DeviceName.BLOCKED_MESSAGE))
                 return
             }
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                onStatus("연결됨 · 이름 항목을 찾는 중…")
+                postStatus("연결됨 · 이름 항목을 찾는 중…")
                 val started = try {
                     gatt?.discoverServices() == true
                 } catch (e: SecurityException) {
@@ -93,26 +94,24 @@ class GattNameReader(
                 fail(DeviceName.BLOCKED_MESSAGE)
                 return
             }
-            readQueue.clear()
-            val nameCharacteristic = characteristic(
-                gatt,
-                GENERIC_ACCESS,
-                DEVICE_NAME
-            )
-            val manufacturerCharacteristic = characteristic(
-                gatt,
-                DEVICE_INFORMATION,
-                MANUFACTURER_NAME
-            )
-            nameCharacteristic?.let { readQueue.addLast(it) }
-            manufacturerCharacteristic?.let { readQueue.addLast(it) }
-
-            if (readQueue.isEmpty()) {
-                fail("이 기기는 상세 이름 항목을 공개하지 않아요. ${DeviceName.BLOCKED_MESSAGE}")
+            val characteristic = characteristic(gatt, GENERIC_ACCESS, DEVICE_NAME)
+            if (characteristic == null) {
+                fail("이 기기는 이름 항목을 공개하지 않아요. ${DeviceName.BLOCKED_MESSAGE}")
                 return
             }
-            onStatus("이름 항목 ${readQueue.size}개를 읽는 중…")
-            readNext()
+            postStatus(READING_MESSAGE)
+            // The device is connected but silent from here on out on many phones and
+            // earphones, so the read gets a short budget of its own.
+            handler.removeCallbacks(readTimeout)
+            handler.postDelayed(readTimeout, READ_TIMEOUT_MS)
+            val started = try {
+                gatt?.readCharacteristic(characteristic) == true
+            } catch (e: SecurityException) {
+                false
+            } catch (e: Exception) {
+                false
+            }
+            if (!started) fail(DeviceName.BLOCKED_MESSAGE)
         }
 
         @Deprecated("Deprecated in Java")
@@ -147,7 +146,7 @@ class GattNameReader(
             fail("블루투스 권한이 없어 이름을 읽을 수 없어요. 권한을 허용한 뒤 다시 눌러 주세요.")
             return
         }
-        onStatus("GATT 연결 중… (최대 2.5초)")
+        postStatus("GATT 연결 중… (최대 1.5초)")
         handler.postDelayed(timeout, TIMEOUT_MS)
         try {
             gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
@@ -175,75 +174,76 @@ class GattNameReader(
         null
     }
 
-    private fun readNext() {
-        if (finished) return
-        val next = readQueue.removeFirstOrNull()
-        if (next == null) {
-            finish(
-                if (deviceName != null || manufacturer != null) {
-                    found()
-                } else {
-                    Result.Failed(DeviceName.BLOCKED_MESSAGE)
-                }
-            )
-            return
-        }
-        val started = try {
-            gatt?.readCharacteristic(next) == true
-        } catch (e: SecurityException) {
-            false
-        } catch (e: Exception) {
-            false
-        }
-        if (!started) readNext()
-    }
-
     private fun onRead(uuid: UUID, value: ByteArray?) {
         if (finished) return
-        val text = DeviceName.decode(value)
-        if (text != null) {
-            when (uuid) {
-                DEVICE_NAME -> deviceName = text
-                MANUFACTURER_NAME -> manufacturer = text
-            }
+        if (uuid == DEVICE_NAME) {
+            deviceName = DeviceName.decode(value) ?: deviceName
         }
-        readNext()
+        handler.removeCallbacks(readTimeout)
+        finish(if (deviceName != null) found() else Result.Failed(DeviceName.BLOCKED_MESSAGE))
     }
 
-    private fun found(): Result = Result.Found(deviceName, manufacturer)
+    private fun found(): Result = Result.Found(deviceName, null)
+
+    /** Every status goes through the main thread, so a callback thread never touches a View. */
+    private fun postStatus(text: String) {
+        handler.post { onStatus(text) }
+    }
 
     private fun fail(message: String) {
         finish(Result.Failed(message))
     }
 
+    /**
+     * Settle the attempt once: the UI gets the answer first, and the BLE teardown that
+     * blocks on the stack's lock happens afterwards on a thread of its own.
+     */
     private fun finish(result: Result?) {
         if (finished) return
         finished = true
         handler.removeCallbacks(timeout)
+        handler.removeCallbacks(readTimeout)
         val connection = gatt
         gatt = null
-        try {
-            connection?.disconnect()
-        } catch (e: SecurityException) {
-            Log.w(TAG, "disconnect needs BLUETOOTH_CONNECT", e)
-        } catch (e: Exception) {
-            Log.w(TAG, "disconnect failed", e)
-        }
-        try {
-            connection?.close()
-        } catch (e: SecurityException) {
-            Log.w(TAG, "close needs BLUETOOTH_CONNECT", e)
-        } catch (e: Exception) {
-            Log.w(TAG, "close failed", e)
-        }
-        if (result != null) onResult(result)
+        if (result != null) handler.post { onResult(result) }
+        if (connection == null) return
+        Thread {
+            try {
+                connection.disconnect()
+            } catch (e: SecurityException) {
+                Log.w(TAG, "disconnect needs BLUETOOTH_CONNECT", e)
+            } catch (e: Exception) {
+                Log.w(TAG, "disconnect failed", e)
+            }
+            try {
+                connection.close()
+            } catch (e: SecurityException) {
+                Log.w(TAG, "close needs BLUETOOTH_CONNECT", e)
+            } catch (e: Exception) {
+                Log.w(TAG, "close failed", e)
+            }
+        }.apply {
+            name = "gatt-close"
+            isDaemon = true
+        }.start()
     }
 
     companion object {
         private const val TAG = "GattNameReader"
 
-        /** Budget for connect + service discovery + name read, all told. */
-        internal const val TIMEOUT_MS = 2_500L
+        /** Budget for connect + service discovery + the single name read, all told. */
+        internal const val TIMEOUT_MS = 1_500L
+
+        /** Budget for the one read once the device has accepted the connection. */
+        internal const val READ_TIMEOUT_MS = 800L
+
+        internal const val READING_MESSAGE = "기기 이름 읽는 중…"
+
+        internal const val TIMEOUT_MESSAGE =
+            "1.5초 동안 응답이 없었어요. ${DeviceName.BLOCKED_MESSAGE}"
+
+        internal const val READ_TIMEOUT_MESSAGE =
+            "이름을 읽는 데 응답이 없었어요. ${DeviceName.BLOCKED_MESSAGE}"
 
         /**
          * True when this connection callback already settles the attempt: the stack
@@ -255,9 +255,7 @@ class GattNameReader(
                 newState == BluetoothProfile.STATE_DISCONNECTED
 
         private val GENERIC_ACCESS = uuid("1800")
-        private val DEVICE_INFORMATION = uuid("180A")
         private val DEVICE_NAME = uuid("2A00")
-        private val MANUFACTURER_NAME = uuid("2A29")
 
         private fun uuid(short: String): UUID =
             UUID.fromString("0000$short-0000-1000-8000-00805f9b34fb")

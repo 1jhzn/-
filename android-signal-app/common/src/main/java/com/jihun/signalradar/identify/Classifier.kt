@@ -187,7 +187,7 @@ object Classifier {
     ): Double? {
         val (reference, exponent) = when (source) {
             SignalSource.BLE ->
-                (txPower?.takeIf { it in TX_POWER_MIN..TX_POWER_MAX }?.toDouble() ?: BLE_REF_1M) to
+                (txPower?.takeIf { isOneMetreTxPower(it) }?.toDouble() ?: BLE_REF_1M) to
                     BLE_EXPONENT
             SignalSource.WIFI -> wifiReference(frequencyMhz) to WIFI_EXPONENT
             SignalSource.CELL -> return null
@@ -232,6 +232,16 @@ object Classifier {
         }
     }
 
+    /**
+     * Whether an advertised txPower can serve as the "how strong am I at 1 m" level.
+     *
+     * Only a negative RSSI-like value in [-100, -20] dBm is that. Apple and some other
+     * chips put the antenna's own output power in the same field instead (+12 dBm is a
+     * typical one), and reading that as a 1 m reference turned a nearby iPhone into "60m+".
+     */
+    fun isOneMetreTxPower(txPower: Int?): Boolean =
+        txPower != null && txPower in TX_POWER_MIN..TX_POWER_MAX
+
     /** 0.42 -> "0.4", 2.44 -> "2.4", 3.0 -> "3". */
     private fun oneDecimal(value: Double): String {
         val tenths = (value * 10).roundToInt()
@@ -253,5 +263,5 @@ object Classifier {
     private const val BLE_EXPONENT = 2.0
     private const val WIFI_EXPONENT = 2.6
     private const val TX_POWER_MIN = -100
-    private const val TX_POWER_MAX = 20
+    private const val TX_POWER_MAX = -20
 }

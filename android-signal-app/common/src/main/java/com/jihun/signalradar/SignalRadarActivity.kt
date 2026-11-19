@@ -571,9 +571,11 @@ abstract class SignalRadarActivity : AppCompatActivity() {
                             gattResult.text = buildString {
                                 append("기기가 직접 알려 준 정보\n")
                                 append("· 기기 이름(0x2A00): ")
-                                append(result.deviceName ?: "공개 안 함").append('\n')
-                                append("· 제조사(0x2A29): ")
-                                append(result.manufacturer ?: "공개 안 함")
+                                append(result.deviceName ?: "공개 안 함")
+                                if (result.manufacturer != null) {
+                                    append('\n').append("· 제조사(0x2A29): ")
+                                        .append(result.manufacturer)
+                                }
                             }
                             gattButton.text = "🔍  다시 읽어오기"
                         }
@@ -662,7 +664,18 @@ abstract class SignalRadarActivity : AppCompatActivity() {
         text.append("신호 세기: ").append(level).append(" dBm")
         if (level != signal.rssi) text.append(" (순간 ").append(signal.rssi).append(" dBm)")
         text.append('\n')
-        signal.txPower?.let { text.append("송신 세기(1m 기준): ").append(it).append(" dBm\n") }
+        signal.txPower?.let {
+            text.append(
+                if (Classifier.isOneMetreTxPower(it)) {
+                    "송신 세기(1m 기준): $it dBm\n"
+                } else {
+                    // Apple and some chips advertise the antenna's output here (+12 dBm),
+                    // not the level at 1 m, so saying "1m 기준" would just be wrong.
+                    "광고된 송신 출력: " + (if (it > 0) "+$it" else "$it") +
+                        " dBm (1m 기준 세기가 아니라 거리 계산에는 쓰지 않아요)\n"
+                }
+            )
+        }
         Classifier.distanceLabel(
             signal.smoothedRssi ?: signal.rssi.toFloat(),
             signal.source,

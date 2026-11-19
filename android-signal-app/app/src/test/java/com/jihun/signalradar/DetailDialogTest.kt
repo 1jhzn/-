@@ -130,6 +130,8 @@ class DetailDialogTest {
         val results = ArrayList<GattNameReader.Result>()
         val reader = GattNameReader(context, { }, { results.add(it) })
         reader.read(device)
+        // The answer reaches the screen through the main thread, so let the looper run it.
+        org.robolectric.shadows.ShadowLooper.idleMainLooper()
         reader.cancel()
 
         val result = results.singleOrNull()
@@ -154,9 +156,9 @@ class DetailDialogTest {
         val results = ArrayList<GattNameReader.Result>()
         val reader = GattNameReader(context, { statuses.add(it) }, { results.add(it) })
         reader.read(device)
-        // A device that never answers must still end with an answer inside 8 seconds.
+        // A device that never answers must still end with an answer inside 1.5 seconds.
         org.robolectric.shadows.ShadowLooper.idleMainLooper(
-            8_500,
+            2_000,
             java.util.concurrent.TimeUnit.MILLISECONDS
         )
         reader.cancel()

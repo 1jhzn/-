@@ -7,6 +7,7 @@ import com.jihun.signalradar.identify.VendorDb
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -77,6 +78,20 @@ class MainActivitySmokeTest {
         assertEquals("약 14m", Classifier.distanceLabel(-70, SignalSource.WIFI, frequencyMhz = 2437))
         assertEquals("약 8.4m", Classifier.distanceLabel(-70, SignalSource.WIFI, frequencyMhz = 5180))
         assertEquals("약 6.4m", Classifier.distanceLabel(-70, SignalSource.WIFI, frequencyMhz = 6135))
+    }
+
+    @Test
+    fun an_output_power_in_the_tx_power_field_is_not_a_one_metre_level() {
+        // Apple (and some other chips) put the antenna's output power there, e.g. +12 dBm.
+        // Reading that as the 1 m reference turned a phone right next to the radar into "60m+".
+        // The screenshot case: an Apple device at -70 dBm read as "60m+" instead of 3.5 m.
+        assertEquals("약 3.5m", Classifier.distanceLabel(-70, SignalSource.BLE, txPower = 12))
+        assertEquals("약 3.5m", Classifier.distanceLabel(-70, SignalSource.BLE))
+        assertFalse(Classifier.isOneMetreTxPower(12))
+        assertFalse(Classifier.isOneMetreTxPower(0))
+        assertFalse(Classifier.isOneMetreTxPower(-10))
+        assertTrue(Classifier.isOneMetreTxPower(-59))
+        assertTrue(Classifier.isOneMetreTxPower(-100))
     }
 
     @Test

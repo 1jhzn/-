@@ -215,7 +215,9 @@ class V2RadarDialView @JvmOverloads constructor(
     }
 
     private fun drawCardinals(canvas: Canvas, cx: Float, cy: Float, outer: Float) {
-        val labels = arrayOf("북", "동", "남", "서")
+        // N/E/S/W like the compass on a phone: the north mark is the one that has to be
+        // found at a glance, so it is blue and the other three stay quiet.
+        val labels = arrayOf("N", "E", "S", "W")
         val radius = outer * 0.82f
         smallPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         smallPaint.textSize = dp(10.5f)

@@ -99,6 +99,39 @@ class RadarCompassPreviewTest {
     }
 
     @Test
+    fun the_finder_ticks_with_a_live_signal_and_closes_cleanly() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        var now = 0L
+        var rssi = -70
+        val signal = Signal(
+            id = "ble:tick",
+            source = SignalSource.BLE,
+            title = "테스트 기기",
+            vendor = null,
+            kind = null,
+            detail = null,
+            address = "AA:BB",
+            rssi = rssi,
+            firstSeen = 0L,
+            lastSeen = 0L
+        )
+        val dialog = DirectionFinderDialog(
+            context,
+            signal,
+            {
+                now += 400
+                rssi -= 2
+                signal.copy(rssi = rssi, lastSeen = now)
+            },
+            { false }
+        )
+        dialog.show()
+        org.robolectric.shadows.ShadowLooper.idleMainLooper(3, java.util.concurrent.TimeUnit.SECONDS)
+        dialog.dismiss()
+        org.robolectric.shadows.ShadowLooper.idleMainLooper(1, java.util.concurrent.TimeUnit.SECONDS)
+    }
+
+    @Test
     fun the_dialog_opens_and_closes_without_a_crash() {
         val context = ApplicationProvider.getApplicationContext<android.app.Application>()
         val signal = Signal(

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>📡 전파 신호 감지기 — 주변 블루투스 신호와 발신지</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#05070d">
+<meta name="description" content="주변 블루투스 LE 전파 신호를 감지하고, 새 신호가 잡히면 제조사와 기기 종류, 대략적인 거리를 알려 줍니다.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%93%A1</text></svg>">
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand" id="brand"><span class="dot"></span>전파 신호 감지기</div>
+    <button class="icon-btn" id="btnSettings" aria-label="설정">⚙️</button>
+  </header>
+
+  <div id="banner" role="alert">
+    <button class="bclose" id="btnBannerClose" aria-label="닫기">✕</button>
+    <div class="bhead"><span class="beep">🚨</span><span id="bannerTitle">새로운 전파 신호 감지!</span></div>
+    <div class="bbody">
+      <div id="bannerBody"></div>
+      <div class="bsrc" id="bannerSrc"></div>
+    </div>
+  </div>
+
+  <main>
+  <!-- ================= 스캔 탭 ================= -->
+  <section id="tab-scan">
+    <div id="blocker"></div>
+
+    <div class="statusrow" id="statusrow"></div>
+    <div class="hint" id="hint"></div>
+
+    <div class="radarwrap">
+      <canvas id="radar" aria-label="레이더 화면"></canvas>
+      <div class="radar-center">
+        <div class="rc-in">
+          <div class="rc-num" id="rcNum">0</div>
+          <div class="rc-lab">감지된 신호</div>
+          <div class="rc-state" id="rcState">대기 중</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btnrow">
+      <button class="btn primary wide" id="btnScan">📡 스캔 시작</button>
+      <button class="btn" id="btnBaseline">✅ 현재 신호를<br>기준으로 저장</button>
+      <button class="btn" id="btnTest">🧪 테스트 신호</button>
+    </div>
+    <div class="btnrow" style="grid-template-columns:1fr 1fr 1fr;margin-top:-2px">
+      <button class="btn small ghost" id="btnClearList">목록 비우기</button>
+      <button class="btn small ghost" id="btnClearBase">기준 지우기</button>
+      <button class="btn small ghost" id="btnShowLog">감지 기록</button>
+    </div>
+
+    <details class="guide" id="guideFlags">
+      <summary>⚙️ 안드로이드 크롬에서 자동 전체 스캔 켜는 법 <span class="arw">▼</span></summary>
+      <div class="gbody">
+        블루투스 기기는 <b>광고(advertisement)</b> 신호를 계속 뿌립니다. 크롬은 기본 설정에서는
+        <b>내가 목록에서 고른 기기</b>에 대해서만 정보를 보여 주기 때문에, 주변 모든 신호를 한 번에
+        모으려면 다음 한 번의 설정이 필요해요. (설정을 하지 않아도 아래 <b>스캔 시작</b> 버튼은
+        기기 선택 창으로 동작합니다.)
+        <ol>
+          <li>크롬 주소창에 <code>chrome://flags</code> 입력</li>
+          <li>검색창에 <code>Experimental Web Platform features</code> 입력</li>
+          <li>오른쪽 값을 <b>Enabled</b>로 변경</li>
+          <li>아래쪽 <b>Relaunch</b> 버튼을 눌러 크롬 재시작</li>
+          <li>이 페이지로 돌아와 <b>스캔 시작</b>을 누르면 주변 신호가 자동으로 모입니다</li>
+        </ol>
+        <div style="margin-top:8px">되돌리려면 같은 항목을 <b>Default</b>로 바꾸고 다시 Relaunch 하면 됩니다.
+        블루투스와 위치(또는 근처 기기) 권한이 켜져 있어야 하고, 처음 한 번은 권한 창을 허용해 주세요.</div>
+      </div>
+    </details>
+
+    <div class="sectionhead">
+      감지된 신호 <span class="cnt" id="devCount">0개</span>
+      <div class="right"><button class="btn small ghost" id="btnHideStale" style="display:none">오래된 신호 숨기기</button></div>
+    </div>
+
+    <ul id="devlist"></ul>
+    <div class="empty" id="emptyState">
+      <span class="big">📡</span>
+      아직 잡힌 신호가 없어요.<br>
+      <b>스캔 시작</b>을 누르고 주변을 천천히 둘러보세요.<br>
+      <span style="font-size:11.5px">설정이 번거로우면 <b>🧪 테스트 신호</b>로 먼저 화면을 확인할 수 있어요.</span>
+    </div>
+  </section>
+
+  <!-- ================= 주파수 탭 ================= -->
+  <section id="tab-freq" hidden>
+    <div class="card">
+      <h3>📶 주파수·대역 판별기</h3>
+      <div class="tiny" style="margin-bottom:10px">숫자를 넣으면 어디에 쓰는 전파인지 알려 줘요. 단위를 비워 두면 알아서 맞춰요.</div>
+      <div class="freqinput">
+        <input id="freqInput" type="text" inputmode="decimal" placeholder="예: 2.4, 2400, 13.56" autocomplete="off">
+        <select id="freqUnit" aria-label="단위">
+          <option value="auto">자동</option>
+          <option value="GHz">GHz</option>
+          <option value="MHz">MHz</option>
+          <option value="kHz">kHz</option>
+        </select>
+      </div>
+      <div class="chips" id="freqChips">
+        <button data-v="2.4GHz">2.4GHz</button>
+        <button data-v="5GHz">5GHz</button>
+        <button data-v="433MHz">433MHz</button>
+        <button data-v="920MHz">920MHz</button>
+        <button data-v="13.56MHz">13.56MHz</button>
+        <button data-v="88MHz">88MHz</button>
+        <button data-v="1800MHz">1.8GHz</button>
+        <button data-v="3500MHz">3.5GHz</button>
+        <button data-v="28GHz">28GHz</button>
+        <button data-v="77GHz">77GHz</button>
+      </div>
+      <div class="freqres" id="freqResult"></div>
+    </div>
+
+    <div class="card">
+      <h3>🔎 이렇게 쓰여요</h3>
+      <div class="tiny">
+        우리 주변에는 눈에 보이지 않는 전파가 아주 많아요. 그중에서도 위쪽 감지기가 실제로 잡는 것은
+        <b>블루투스 LE(2.4GHz) 광고 신호</b>예요. 와이파이나 휴대폰 기지국은 이 웹앱이 직접 잡을 수
+        없지만, 주파수를 넣어 어떤 용도인지 확인할 수는 있어요.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 도움말 탭 ================= -->
+  <section id="tab-help" hidden>
+    <div class="card">
+      <h3>🧭 이 앱이 하는 일</h3>
+      <div class="tiny" style="font-size:12.5px">
+        주변에서 뿌려지는 블루투스 LE 광고 신호를 읽어서 <b>① 어떤 신호가 새로 나타났는지</b>,
+        <b>② 그 신호가 어디서 나온 것인지</b>(제조사·기기 종류·대략적인 거리)를 알려 줍니다.
+        신호 세기(RSSI)로 거리를 어림하고, 제조사 ID·서비스 UUID·기기 이름·광고 데이터를 함께
+        살펴 판별해요.
+      </div>
+    </div>
+    <div class="card">
+      <h3>✅ 지원 환경</h3>
+      <div class="tiny" style="font-size:12.5px">
+        <b>안드로이드 크롬</b>에서 가장 잘 동작해요. 아이폰 사파리는 웹에서 블루투스를 쓰는 기능을
+        제공하지 않아 이 앱을 쓸 수 없어요. 컴퓨터 크롬은 블루투스 어댑터가 있는 경우에만 일부 동작해요.
+        <br><br>
+        <b>전체 자동 스캔</b>은 <code>chrome://flags</code>의 실험 기능을 켜야 하고, 끈 상태에서는
+        크롬이 띄워 주는 <b>기기 선택 창</b>에서 고른 기기만 볼 수 있어요. 어느 쪽이든
+        <b>기준 저장 → 새 신호 알림</b>은 똑같이 동작합니다.
+      </div>
+    </div>
+    <div class="card">
+      <h3>⚠️ 알아 둘 점</h3>
+      <div class="tiny" style="font-size:12.5px">
+        · 거리는 신호 세기로 계산한 <b>어림값</b>이에요. 벽이나 사람 몸, 기기 각도에 따라 크게 달라져요.<br>
+        · 블루투스 기기는 주소를 자주 바꾸기 때문에, 같은 기기가 잠깐 <b>새 신호</b>처럼 잡힐 수 있어요.<br>
+        · 앱은 신호를 <b>읽기만</b> 하고, 상대 기기에 연결하거나 내용을 바꾸지 않아요(직접 누른 ‘상세 정보 읽기’ 제외).<br>
+        · 와이파이, 휴대폰 기지국, 라디오 전파는 브라우저에서 잡을 수 없어요.
+      </div>
+    </div>
+    <div class="card">
+      <h3>🔒 개인정보</h3>
+      <div class="tiny" style="font-size:12.5px">
+        감지한 신호와 기준 목록은 <b>이 휴대폰 안(localStorage)</b>에만 저장되고 어디로도 전송되지 않아요.
+        서버도, 로그인도, 광고도 없습니다. <b>목록 비우기</b>나 <b>기준 지우기</b>로 언제든 지울 수 있어요.
+      </div>
+    </div>
+    <div class="card">
+      <h3>🛠 만든 방식</h3>
+      <div class="tiny" style="font-size:12.5px">
+        웹 표준(Web Bluetooth / Web Audio / Canvas)만 사용해 처음부터 직접 만든 페이지예요.
+        제조사 ID와 서비스 UUID는 블루투스 표준(SIG)에 공개된 식별 번호를 바탕으로 정리했습니다.
+      </div>
+    </div>
+  </section>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tb on" data-tab="scan"><span class="ti">📡</span>스캔</button>
+    <button class="tb" data-tab="freq"><span class="ti">📶</span>주파수</button>
+    <button class="tb" data-tab="help"><span class="ti">❓</span>도움말</button>
+  </nav>
+</div>
+
+<!-- 설정 시트 -->
+<div class="sheet-mask" id="settingsMask">
+  <div class="sheet">
+    <h3>⚙️ 설정 <button id="btnSettingsClose" aria-label="닫기">✕</button></h3>
+    <div class="opt">
+      <div class="ot"><b>알림음</b><span>새 신호가 잡히면 삐 소리</span></div>
+      <button class="sw on" id="swSound" aria-label="알림음"><i></i></button>
+    </div>
+    <div class="opt">
+      <div class="ot"><b>진동</b><span>새 신호가 잡히면 짧게 진동</span></div>
+      <button class="sw on" id="swVibe" aria-label="진동"><i></i></button>
+    </div>
+    <div class="opt" style="flex-direction:column;align-items:stretch;gap:0">
+      <div class="ot"><b>알림 조건</b><span>어떤 변화를 알려 줄지</span></div>
+      <div class="selrow" id="alertModeRow">
+        <button data-mode="both" class="on">새 신호 + 세기 변화</button>
+        <button data-mode="new">새 신호만</button>
+      </div>
+    </div>
+    <div class="opt" style="flex-direction:column;align-items:stretch;gap:0">
+      <div class="ot"><b>세기 급변 기준</b><span>기준보다 얼마나 세지면 알릴지</span></div>
+      <div class="selrow" id="jumpRow">
+        <button data-jump="10">±10dBm</button>
+        <button data-jump="15" class="on">±15dBm</button>
+        <button data-jump="20">±20dBm</button>
+      </div>
+    </div>
+    <div style="margin-top:14px" class="tiny">
+      감지 기록과 기준은 이 휴대폰에만 저장돼요.
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="app.js?v=1"></script>
+</body>
+</html>

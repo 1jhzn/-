@@ -229,6 +229,8 @@ class MainActivity : AppCompatActivity() {
 
         val newOnes = all.filter { it.isNew }.sortedByDescending { it.rssi }
         statNew.text = newOnes.size.toString()
+        chips[Filter.NEW]?.text =
+            if (newOnes.isEmpty()) "🚨 새 신호" else "🚨 새 신호 ${newOnes.size}"
         statNew.setTextColor(
             ContextCompat.getColor(
                 this,

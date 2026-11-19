@@ -116,7 +116,11 @@ class CellScanner(
         val nrInfo = info as? CellInfoNr ?: return null
         val identity = nrInfo.cellIdentity as? CellIdentityNr ?: return null
         val strength = nrInfo.cellSignalStrength as? CellSignalStrengthNr ?: return null
-        val band = Classifier.lteBandLabel(identity.bands)
+        val band = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Classifier.lteBandLabel(identity.bands)
+        } else {
+            null
+        }
         val parts = ArrayList<String>(3)
         parts.add("PCI ${identity.pci}")
         parts.add("기지국 ID ${identity.nci}")

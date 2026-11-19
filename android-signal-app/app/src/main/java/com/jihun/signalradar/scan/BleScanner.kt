@@ -108,8 +108,11 @@ class BleScanner(
     fun stop() {
         if (!scanning) return
         scanning = false
+        if (!hasScanPermission()) return
         try {
             adapter?.bluetoothLeScanner?.stopScan(callback)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "stopScan needs bluetooth permission", e)
         } catch (e: Exception) {
             Log.w(TAG, "stopScan failed", e)
         }
@@ -172,10 +175,6 @@ class BleScanner(
             detailParts.add("제조사 ID 0x" + companyId.toString(16).uppercase().padStart(4, '0'))
         } else {
             detailParts.add("제조사 정보 없음")
-        }
-        if (advertisedName != null && advertisedName.isNotBlank() && kind != null) {
-            // keep the advertised name visible when we also show a guess
-            detailParts.add(0, advertisedName)
         }
 
         val now = System.currentTimeMillis()

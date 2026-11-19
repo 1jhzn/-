@@ -75,10 +75,12 @@ class WifiScanner(
         handler.removeCallbacks(poller)
         val cb = callback
         if (cb != null) {
-            try {
-                wifi?.unregisterScanResultsCallback(cb)
-            } catch (e: Exception) {
-                Log.w(TAG, "unregister callback failed", e)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                try {
+                    wifi?.unregisterScanResultsCallback(cb)
+                } catch (e: Exception) {
+                    Log.w(TAG, "unregister callback failed", e)
+                }
             }
             callback = null
         }

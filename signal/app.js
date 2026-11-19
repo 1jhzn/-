@@ -663,7 +663,7 @@ function renderStatus() {
   if (!hint) return;
   var bn2 = Object.keys(state.baseline).length;
   if (!state.devices.size) {
-    hint.className = 'hint warn';
+    hint.className = 'hint show warn';
     hint.innerHTML = '📡 <b>스캔 시작</b>을 누르면 주변 블루투스 신호를 모으기 시작해요. 기준을 저장해 두면 새로 나타난 신호를 알려 드려요.';
   } else if (!bn2) {
     hint.className = 'hint';
@@ -1178,7 +1178,7 @@ var BANDS = [
     items: ['DMB 방송', '구형 지상파 TV'] },
   { n: '315MHz — 무선 리모컨·차 키', f: 315e6, t: 316e6, what: '짧은 명령 신호',
     items: ['차량 문 열림 키', '도어벨', '무선 스위치'] },
-  { n: '433MHz — 무선 리모컨·차 키·센서', f: 433.05e6, t: 434.79e6, what: '생활 무선기기의 대표 주파수',
+  { n: '433MHz — 무선 리모컨·차 키·센서', f: 433e6, t: 434.79e6, what: '생활 무선기기의 대표 주파수',
     items: ['차량 키·경보기', '현관 도어벨', '무선 온도계·스마트홈 센서', 'RC 장난감'],
     tip: '우리 주변에서 아주 흔한 신호예요. 문 열림, 도어벨, 센서가 대부분 이 대역을 씁니다.' },
   { n: '446MHz — 생활 무전기', f: 446e6, t: 446.2e6, what: '가까운 거리 무전',
@@ -1189,7 +1189,7 @@ var BANDS = [
     items: ['지상파 TV 방송', '방송국 무선 마이크'] },
   { n: '800MHz 이동통신', f: 824e6, t: 894e6, what: '휴대폰 기지국(구형 CDMA·LTE)',
     items: ['휴대폰 기지국', '구형 2G·3G'] },
-  { n: '900MHz ISM — UHF RFID·LoRa', f: 902e6, t: 928e6, what: '물류 태그·장거리 저전력 통신',
+  { n: '900MHz ISM — UHF RFID·LoRa', f: 900e6, t: 928e6, what: '물류 태그·장거리 저전력 통신',
     items: ['물류·재고 RFID', 'LoRa 센서', '무선 마이크'] },
   { n: '920MHz — 국내 RFID/USN', f: 917e6, t: 923.5e6, what: '국내 물류·검침용',
     items: ['도서관 책 태그', '주차장 입출차 태그', '스마트 검침기'] },

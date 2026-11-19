@@ -554,7 +554,7 @@ abstract class SignalRadarActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             gattButton.isEnabled = false
-            gattButton.text = "🔍  이름 읽는 중… (최대 8초)"
+            gattButton.text = "🔍  이름 읽는 중…"
             gattResult.visibility = View.VISIBLE
             gattResult.text = "GATT 연결 중…"
             reader?.cancel()

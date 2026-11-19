@@ -26,8 +26,9 @@ import java.util.UUID
  * own — the detail screen calls [read] from a button, and the connection is closed on
  * every path (success, refusal, timeout, cancel) by [finish].
  *
- * The 8 second budget and the honest "it blocked us" wording come from the fact that many
- * modern phones, AirPods and trackers refuse a connection from an unknown phone.
+ * The 2.5 second budget and the honest "it blocked us" wording come from the fact that many
+ * modern phones, AirPods and trackers refuse a connection from an unknown phone, and a
+ * refusal already answers the question: waiting longer only makes the button feel broken.
  */
 class GattNameReader(
     private val context: Context,
@@ -52,7 +53,7 @@ class GattNameReader(
             if (deviceName != null || manufacturer != null) {
                 found()
             } else {
-                Result.Failed("8초 동안 응답이 없었어요. ${DeviceName.BLOCKED_MESSAGE}")
+                Result.Failed("2.5초 동안 응답이 없었어요. ${DeviceName.BLOCKED_MESSAGE}")
             }
         )
     }
@@ -60,6 +61,18 @@ class GattNameReader(
     private val callback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
             if (finished) return
+            // A refusal (133 and friends) or a hang-up answers the question right away.
+            // Waiting out the timeout after that is what made the button feel stuck.
+            if (shouldStop(status, newState)) {
+                finish(
+                    if (deviceName != null || manufacturer != null) {
+                        found()
+                    } else {
+                        Result.Failed(DeviceName.BLOCKED_MESSAGE)
+                    }
+                )
+                return
+            }
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 onStatus("연결됨 · 이름 항목을 찾는 중…")
                 val started = try {
@@ -71,17 +84,6 @@ class GattNameReader(
                     false
                 }
                 if (!started) fail(DeviceName.BLOCKED_MESSAGE)
-            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                // Some devices answer and hang up straight away; keep whatever was read.
-                finish(
-                    if (deviceName != null || manufacturer != null) {
-                        found()
-                    } else {
-                        Result.Failed(DeviceName.BLOCKED_MESSAGE)
-                    }
-                )
-            } else if (status != BluetoothGatt.GATT_SUCCESS) {
-                fail(DeviceName.BLOCKED_MESSAGE)
             }
         }
 
@@ -145,7 +147,7 @@ class GattNameReader(
             fail("블루투스 권한이 없어 이름을 읽을 수 없어요. 권한을 허용한 뒤 다시 눌러 주세요.")
             return
         }
-        onStatus("GATT 연결 중… (최대 8초)")
+        onStatus("GATT 연결 중… (최대 2.5초)")
         handler.postDelayed(timeout, TIMEOUT_MS)
         try {
             gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
@@ -239,7 +241,18 @@ class GattNameReader(
 
     companion object {
         private const val TAG = "GattNameReader"
-        private const val TIMEOUT_MS = 8_000L
+
+        /** Budget for connect + service discovery + name read, all told. */
+        internal const val TIMEOUT_MS = 2_500L
+
+        /**
+         * True when this connection callback already settles the attempt: the stack
+         * reported a failure status, or the device hung up. Both mean "no name from this
+         * one", so the caller closes the connection instead of waiting for the timeout.
+         */
+        internal fun shouldStop(status: Int, newState: Int): Boolean =
+            status != BluetoothGatt.GATT_SUCCESS ||
+                newState == BluetoothProfile.STATE_DISCONNECTED
 
         private val GENERIC_ACCESS = uuid("1800")
         private val DEVICE_INFORMATION = uuid("180A")

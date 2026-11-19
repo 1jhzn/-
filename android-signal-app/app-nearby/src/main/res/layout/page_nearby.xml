@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- "내 주변": a 10 m radar around me, then the list of devices inside it. -->
+<!-- "내 주변": a 10 m radar around me, then the list of devices inside it.
+
+     The ⛶ 전체화면 button sits on the radar card itself, so the radar and its toggle stay
+     together: in fullscreen the header, the tab bar, the legends and the list go away and
+     this same button turns into ✕ 축소 over a radar that fills the screen. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -9,8 +13,9 @@
     android:paddingEnd="18dp">
 
     <!-- Count + the same scan button the distance tab has, so scanning can be started
-         and stopped from either tab. -->
+         and stopped from either tab. Kept in fullscreen too: 스캔 시작/중지 stays reachable. -->
     <LinearLayout
+        android:id="@+id/nearbyTopRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
@@ -51,18 +56,54 @@
         android:textColor="@color/text_muted"
         android:textSize="11sp" />
 
-    <!-- 0 m in the middle, rings at 2 m / 5 m / 10 m. -->
-    <com.jihun.signalradar.nearby.NearbyRadarView
-        android:id="@+id/nearbyRadar"
+    <!-- 0 m in the middle, rings at 2 m / 5 m / 10 m. The toggle is an overlay on the card,
+         top-right, in both modes. In fullscreen the card becomes a square that fills the
+         width and sits in the middle of the screen, so the dial is as large as the phone
+         allows without stretching the panel into empty bands. -->
+    <FrameLayout
+        android:id="@+id/radarArea"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="6dp"
-        android:layout_weight="1"
-        android:background="@drawable/bg_nearby_panel"
-        android:contentDescription="10m 레이더" />
+        android:layout_weight="1">
 
-    <!-- What the dot colours and the dot styles mean. -->
+        <FrameLayout
+            android:id="@+id/radarHolder"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center">
+
+            <com.jihun.signalradar.nearby.NearbyRadarView
+                android:id="@+id/nearbyRadar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_nearby_panel"
+                android:contentDescription="10m 레이더" />
+
+            <TextView
+                android:id="@+id/nearbyFullscreen"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="9dp"
+                android:layout_marginEnd="9dp"
+                android:background="@drawable/bg_pill_small_stop"
+                android:clickable="true"
+                android:contentDescription="레이더 전체화면으로 보기"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingStart="11dp"
+                android:paddingEnd="11dp"
+                android:text="⛶ 전체화면"
+                android:textColor="@color/accent"
+                android:textSize="11.5sp"
+                android:textStyle="bold" />
+        </FrameLayout>
+    </FrameLayout>
+
+    <!-- What the dot colours and the dot styles mean. Hidden in fullscreen. -->
     <LinearLayout
+        android:id="@+id/nearbyLegendRadios"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
@@ -102,6 +143,7 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/nearbyLegendDots"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="3dp"
@@ -159,6 +201,7 @@
         android:textSize="10.5sp" />
 
     <LinearLayout
+        android:id="@+id/nearbyListHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="9dp"
@@ -184,6 +227,7 @@
     </LinearLayout>
 
     <FrameLayout
+        android:id="@+id/nearbyListBox"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="4dp"

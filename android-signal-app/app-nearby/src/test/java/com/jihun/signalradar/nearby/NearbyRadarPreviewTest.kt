@@ -30,8 +30,10 @@ import java.io.File
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE], qualifiers = "w411dp-h891dp-xxhdpi")
 class NearbyRadarPreviewTest {
 
-    private val width = 1080
-    private val height = 2100
+    // Render at the real window size of the configured device: the toggle asks for a layout,
+    // and a pending pass at any other size would leave the bitmap half cut off.
+    private var width = 1080
+    private var height = 2100
 
     private fun sample(
         id: String,
@@ -66,6 +68,9 @@ class NearbyRadarPreviewTest {
 
     private fun capture(activity: android.app.Activity, name: String) {
         val root = activity.findViewById<View>(android.R.id.content)
+        // Let any layout the toggle just requested run first; otherwise it lands after our
+        // own measure and the bitmap keeps the window size instead of the preview size.
+        ShadowLooper.idleMainLooper()
         val specW = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY)
         val specH = View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
         root.measure(specW, specH)
@@ -89,6 +94,8 @@ class NearbyRadarPreviewTest {
     fun render_both_tabs() {
         val controller = Robolectric.buildActivity(NearbyRadarActivity::class.java).setup()
         val activity = controller.get()
+        width = activity.resources.displayMetrics.widthPixels
+        height = activity.resources.displayMetrics.heightPixels
 
         // Put the same kind of readings a phone would see into the repository.
         val repoField = SignalRadarActivity::class.java.getDeclaredField("repo")
@@ -156,6 +163,15 @@ class NearbyRadarPreviewTest {
         root.layout(0, 0, width, height)
         ShadowLooper.idleMainLooper()
         capture(activity, "tab-nearby.png")
+
+        // The same radar with ⛶ 전체화면 on: chrome gone, the circle fills the screen and
+        // ✕ 축소 sits in its corner.
+        activity.findViewById<TextView>(R.id.nearbyFullscreen).performClick()
+        ShadowLooper.idleMainLooper()
+        root.measure(specW, specH)
+        root.layout(0, 0, width, height)
+        ShadowLooper.idleMainLooper()
+        capture(activity, "tab-nearby-fullscreen.png")
 
         controller.pause().stop().destroy()
     }

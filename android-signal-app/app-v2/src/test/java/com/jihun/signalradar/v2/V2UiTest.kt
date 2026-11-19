@@ -120,6 +120,25 @@ class V2UiTest {
         controller.pause().stop().destroy()
     }
 
+    @Test
+    fun the_radar_fullscreen_toggle_still_works_in_the_v2_layout() {
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        activity.findViewById<View>(R.id.tabNearby).performClick()
+
+        val toggle = activity.findViewById<TextView>(R.id.nearbyFullscreen)
+        assertEquals("⛶ 전체화면", toggle.text.toString())
+        toggle.performClick()
+        assertEquals(View.GONE, activity.findViewById<View>(R.id.headerBar).visibility)
+        assertEquals(View.GONE, activity.findViewById<View>(R.id.tabBar).visibility)
+        assertEquals("✕ 축소", toggle.text.toString())
+
+        activity.onBackPressedDispatcher.onBackPressed()
+        assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.headerBar).visibility)
+        assertEquals("⛶ 전체화면", toggle.text.toString())
+        controller.pause().stop().destroy()
+    }
+
     // --------------------------------------------------------- 1순위: 빈 화면 위치
 
     @Test

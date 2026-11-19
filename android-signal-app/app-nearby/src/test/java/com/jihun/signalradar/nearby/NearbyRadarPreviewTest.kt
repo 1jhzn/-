@@ -24,6 +24,7 @@ import java.io.File
  * Draws both tabs into PNGs so the bottom buttons, the radar and its labels can be checked
  * by eye without a phone. Uses Robolectric's native graphics.
  */
+@Ignore("Visual preview only: remove this to render a PNG into build/previews")
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE], qualifiers = "w411dp-h891dp-xxhdpi")

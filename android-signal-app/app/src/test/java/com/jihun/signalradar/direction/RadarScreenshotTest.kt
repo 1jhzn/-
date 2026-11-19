@@ -21,6 +21,7 @@ import java.io.File
  * Uses Robolectric's native graphics, which is heavier than the ordinary unit tests.
  */
 
+
 @Ignore("Visual preview only: remove this to render a PNG into build/previews")
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -46,6 +47,15 @@ class RadarScreenshotTest {
         radar.sectorPeaks = sectors
         radar.aligned = true
         radar.compassAvailable = true
+        root.findViewById<android.widget.TextView>(R.id.dirProgress).text =
+            SignalDirectionTracker.progressLabel(11) + " · 더 돌리면 더 정확해져요"
+        root.findViewById<android.widget.TextView>(R.id.dirTitle).text = "지훈의 AirPods"
+        root.findViewById<android.widget.TextView>(R.id.dirSubtitle).text = "블루투스 · 애플 · F8:1E:DF:12:34:56"
+        root.findViewById<android.widget.TextView>(R.id.dirBearing).text =
+            SignalDirectionTracker.bearingText(45f)
+        root.findViewById<android.widget.TextView>(R.id.dirLevels).text =
+            "최고 -54 dBm · 현재 -58 dBm"
+        root.findViewById<android.widget.TextView>(R.id.dirDistance).text = "약 0.8m"
 
         root.measure(
             View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),

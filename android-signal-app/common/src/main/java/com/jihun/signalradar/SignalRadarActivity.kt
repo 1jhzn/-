@@ -77,7 +77,14 @@ abstract class SignalRadarActivity : AppCompatActivity() {
     private var problemText: String? = null
     private var finderDialog: DirectionFinderDialog? = null
 
+    /**
+     * The new-signal buzz is faint and at most once every ten seconds, however many devices
+     * arrive at once: 지훈's complaint was "방향도 너무 안 맞고 너무 진동이 심하니까 줄여주고".
+     */
+    private val newBuzz = NewSignalBuzz()
+
     private lateinit var statusChip: TextView
+    private lateinit var bellToggle: TextView
     private lateinit var statusDetail: TextView
     private lateinit var alertBanner: View
     private lateinit var alertTitle: TextView
@@ -155,6 +162,9 @@ abstract class SignalRadarActivity : AppCompatActivity() {
         btnBaseline = findViewById(R.id.btnBaseline)
         emptyState = findViewById(R.id.emptyState)
         emptyText = findViewById(R.id.emptyText)
+        bellToggle = findViewById(R.id.bellToggle)
+        bellToggle.setOnClickListener { toggleNewSignalBuzz() }
+        renderBuzzSwitch()
 
         val list = findViewById<RecyclerView>(R.id.signalList)
         list.layoutManager = LinearLayoutManager(this)
@@ -335,16 +345,45 @@ abstract class SignalRadarActivity : AppCompatActivity() {
             if (newAlerted.add(signal.id)) fresh = true
         }
         if (newAlerted.size > 400) newAlerted.clear()
-        if (fresh) vibrate()
+        if (fresh) vibrateNewSignal()
     }
 
-    private fun vibrate() {
+    /**
+     * One faint tap for a new signal, not a 170 ms buzz per device.
+     *
+     * The banner and the 🚨 counter still report every new signal; only the motor is held
+     * back, once per [NewSignalBuzz.MIN_GAP_MS]. Turned off entirely with the 🔕 switch.
+     */
+    private fun vibrateNewSignal() {
+        if (!repo.vibrateOnNewSignal()) return
+        val now = System.currentTimeMillis()
+        if (!newBuzz.allow(now)) return
         val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator ?: return
         try {
-            vibrator.vibrate(VibrationEffect.createOneShot(170, VibrationEffect.DEFAULT_AMPLITUDE))
+            vibrator.vibrate(
+                VibrationEffect.createOneShot(
+                    NewSignalBuzz.DURATION_MS,
+                    NewSignalBuzz.AMPLITUDE
+                )
+            )
         } catch (e: Exception) {
             // vibration is a nicety; never let it break the scan
         }
+    }
+
+    private fun toggleNewSignalBuzz() {
+        val enabled = !repo.vibrateOnNewSignal()
+        repo.setVibrateOnNewSignal(enabled)
+        renderBuzzSwitch()
+        toast(if (enabled) "새 신호 진동을 켰어요 · 아주 약하게 한 번만 울려요" else "새 신호 진동을 껐어요")
+    }
+
+    private fun renderBuzzSwitch() {
+        val on = repo.vibrateOnNewSignal()
+        bellToggle.text = if (on) "🔔" else "🔕"
+        bellToggle.alpha = if (on) 1f else 0.5f
+        bellToggle.contentDescription =
+            if (on) "새 신호 진동 켜짐 · 눌러서 끄기" else "새 신호 진동 꺼짐 · 눌러서 켜기"
     }
 
     private fun filterSignals(all: List<Signal>): List<Signal> {
@@ -485,6 +524,8 @@ abstract class SignalRadarActivity : AppCompatActivity() {
     private fun saveBaseline() {
         val count = repo.saveBaseline()
         newAlerted.clear()
+        // The user asked for a fresh start, so the next new signal may tap again at once.
+        newBuzz.reset()
         lastSignature = null
         if (count == 0) {
             toast("아직 잡힌 신호가 없어요. 스캔을 먼저 시작해 주세요.")
@@ -532,17 +573,32 @@ abstract class SignalRadarActivity : AppCompatActivity() {
         render(current)
 
         var reader: GattNameReader? = null
+        var reading = false
         val canReadName = signal.source == SignalSource.BLE && MAC_PATTERN.matches(signal.address.uppercase())
         if (signal.source == SignalSource.BLE) {
             gattButton.visibility = View.VISIBLE
             if (!canReadName) {
-                gattButton.text = "🔍  기기 이름 더 읽어오기"
+                gattButton.text = READ_LABEL
             }
         } else {
             gattButton.visibility = View.GONE
         }
 
         gattButton.setOnClickListener {
+            // While a read is running the same button is the stop button: 지훈 asked to be
+            // able to end it himself instead of waiting out the timeouts ("이름 읽는 시간을
+            // 내가 멈출수있게 해줘"). cancel() closes the connection on its own thread and
+            // reports nothing, so the screen is reset here.
+            if (reading) {
+                reader?.cancel()
+                reader = null
+                reading = false
+                gattButton.isEnabled = true
+                gattButton.text = READ_LABEL
+                gattResult.visibility = View.VISIBLE
+                gattResult.text = STOPPED_MESSAGE
+                return@setOnClickListener
+            }
             val device = if (canReadName) bluetoothDevice(current.address) else null
             if (device == null) {
                 gattResult.visibility = View.VISIBLE
@@ -553,15 +609,20 @@ abstract class SignalRadarActivity : AppCompatActivity() {
                 }
                 return@setOnClickListener
             }
-            gattButton.isEnabled = false
-            gattButton.text = "🔍  이름 읽는 중…"
+            reading = true
+            // Stays clickable on purpose: the label now says how to stop.
+            gattButton.isEnabled = true
+            gattButton.text = STOP_READ_LABEL
             gattResult.visibility = View.VISIBLE
             gattResult.text = "GATT 연결 중…"
             reader?.cancel()
             reader = GattNameReader(
                 this,
-                onStatus = { status -> gattResult.text = status },
+                // A status that arrives after the user stopped must not overwrite the
+                // "읽기를 멈췄어요" line.
+                onStatus = { status -> if (reading) gattResult.text = status },
                 onResult = { result ->
+                    reading = false
                     gattButton.isEnabled = true
                     when (result) {
                         is GattNameReader.Result.Found -> {
@@ -577,11 +638,11 @@ abstract class SignalRadarActivity : AppCompatActivity() {
                                         .append(result.manufacturer)
                                 }
                             }
-                            gattButton.text = "🔍  다시 읽어오기"
+                            gattButton.text = READ_AGAIN_LABEL
                         }
                         is GattNameReader.Result.Failed -> {
                             gattResult.text = result.message
-                            gattButton.text = "🔍  다시 시도"
+                            gattButton.text = READ_RETRY_LABEL
                         }
                     }
                 }
@@ -815,6 +876,15 @@ abstract class SignalRadarActivity : AppCompatActivity() {
     companion object {
         private const val REFRESH_MS = 800L
         private const val CELL_MS = 5_000L
+
+        /** The name-read button's labels, so the stop state is one place to change. */
+        internal const val READ_LABEL = "🔍  기기 이름 더 읽어오기"
+        internal const val STOP_READ_LABEL = "⏹  읽기 멈추기"
+        internal const val READ_AGAIN_LABEL = "🔍  다시 읽어오기"
+        internal const val READ_RETRY_LABEL = "🔍  다시 시도"
+
+        /** Said when the user stops a name read with the ⏹ button. */
+        internal const val STOPPED_MESSAGE = "읽기를 멈췄어요"
 
         /** AA:BB:CC:DD:EE:FF — a real address, not "주소 비공개". */
         private val MAC_PATTERN = Regex("^([0-9A-F]{2}:){5}[0-9A-F]{2}$")

@@ -23,6 +23,9 @@ import kotlin.math.sin
  *  - Directions are compared after blending each sector with its two neighbours. A single
  *    lone spike (a reflection off a wall, a body blocking the path) has to be clearly
  *    stronger than a broad lobe before it can pull the needle to itself.
+ *  - Each sector keeps its own exponential moving average as well, so one lucky packet —
+ *    or one body stepping into the path — cannot become a sector's whole value and drag
+ *    the needle to a direction the signal never really came from.
  *
  * Pure Kotlin on purpose: no Android types, so the maths is unit-tested on the JVM.
  */
@@ -32,7 +35,9 @@ class SignalDirectionTracker(
 ) {
 
     private var ema: Float? = null
-    private val sectorPeak = FloatArray(SECTORS) { NO_VALUE }
+
+    /** Per-sector level: an average over the readings heard while pointing that way. */
+    private val sectorLevel = FloatArray(SECTORS) { NO_VALUE }
     private val sectorCos = DoubleArray(SECTORS)
     private val sectorSin = DoubleArray(SECTORS)
     private val sectorWeight = DoubleArray(SECTORS)
@@ -63,7 +68,6 @@ class SignalDirectionTracker(
     /** True once enough of the circle has been walked to trust a bearing. */
     val hasPeak: Boolean
         get() = peakAzimuth != null
-
     fun reset() {
         ema = null
         bestSector = -1
@@ -74,7 +78,7 @@ class SignalDirectionTracker(
         measuredSectors = 0
         history.clear()
         for (i in 0 until SECTORS) {
-            sectorPeak[i] = NO_VALUE
+            sectorLevel[i] = NO_VALUE
             sectorCos[i] = 0.0
             sectorSin[i] = 0.0
             sectorWeight[i] = 0.0
@@ -84,9 +88,9 @@ class SignalDirectionTracker(
 
     fun smoothedRssi(): Float? = lastSmoothed
 
-    /** Highest smoothed level heard while the phone pointed into this sector, if any. */
+    /** Smoothed level heard while the phone pointed into this sector, if any. */
     fun sectorValue(index: Int): Float? =
-        sectorPeak[wrap(index)].takeIf { it > NO_VALUE }
+        sectorLevel[wrap(index)].takeIf { it > NO_VALUE }
 
     /** Feed one observation. [heading] is the phone's compass bearing, null when unknown. */
     fun onSample(rssi: Int, heading: Float?, now: Long): Float {
@@ -119,7 +123,14 @@ class SignalDirectionTracker(
             sectorCos[index] += weight * cos(rad)
             sectorSin[index] += weight * sin(rad)
             sectorWeight[index] += weight
-            if (value > sectorPeak[index]) sectorPeak[index] = value
+            // Average the sector instead of remembering its best packet: a reflection that
+            // happened to be caught once must not define a whole direction.
+            val previousLevel = sectorLevel[index]
+            sectorLevel[index] = if (previousLevel > NO_VALUE) {
+                previousLevel + SECTOR_SMOOTHING * (value - previousLevel)
+            } else {
+                value
+            }
             refreshPeak()
         } else if (peakRssi == null || value > (peakRssi ?: NO_VALUE)) {
             // No compass: still report the strongest level, just without a direction.
@@ -245,6 +256,10 @@ class SignalDirectionTracker(
         const val ALIGNED_DEG = 15f
 
         private const val NO_VALUE = Float.NEGATIVE_INFINITY
+
+        /** Weight of each new reading in a sector's own average. */
+        private const val SECTOR_SMOOTHING = 0.3f
+
         private const val PEAK_HYSTERESIS_DB = 1.5f
         private const val CENTER_WEIGHT = 0.5f
         private const val NEIGHBOUR_WEIGHT = 0.25f

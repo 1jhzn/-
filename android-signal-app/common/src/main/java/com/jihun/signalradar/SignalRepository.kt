@@ -177,6 +177,13 @@ class SignalRepository(context: Context) {
     /** Measured compass bearing for a signal, or null while it has not been measured. */
     fun bearing(id: String): Float? = synchronized(lock) { bearings[id] }
 
+    /** Whether a new signal may buzz the phone (the 🔔/🔕 switch at the top). */
+    fun vibrateOnNewSignal(): Boolean = prefs.getBoolean(KEY_VIBRATE, true)
+
+    fun setVibrateOnNewSignal(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_VIBRATE, enabled).apply()
+    }
+
     /** Forget one signal so it stops showing up as new ("이 신호는 무시"). */
     fun addToBaseline(id: String, rssi: Int) {
         synchronized(lock) {
@@ -220,12 +227,13 @@ class SignalRepository(context: Context) {
         private const val PREFS = "signal_radar"
         private const val KEY_BASELINE = "baseline_v1"
         private const val KEY_SAVED_AT = "baseline_saved_at"
+        private const val KEY_VIBRATE = "vibrate_new_signal"
 
         /** A signal that got this much stronger than in the baseline is worth a flag. */
         private const val BOOST_DB = 12
 
         /** Weight of each new reading in the smoothed level. */
-        private const val EMA_ALPHA = 0.28f
+        private const val EMA_ALPHA = 0.22f
 
         /** A jump bigger than this in one step is most likely a bad packet. */
         private const val OUTLIER_DB = 12f

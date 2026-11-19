@@ -242,8 +242,10 @@ class DirectionFinderDialog(
         )
 
         alignedView.visibility = if (radar.aligned) View.VISIBLE else View.INVISIBLE
+        // One faint tap on entering the aligned state, never a buzz that keeps repeating
+        // while the phone stays there: 18 ms at amplitude 1, and two seconds of quiet after.
         if (radar.aligned && !wasAligned) {
-            buzz(60)
+            buzz(BUZZ_MS)
         }
         wasAligned = radar.aligned
 
@@ -336,7 +338,7 @@ class DirectionFinderDialog(
         lastBuzz = now
         val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator ?: return
         try {
-            vibrator.vibrate(VibrationEffect.createOneShot(millis, VibrationEffect.DEFAULT_AMPLITUDE))
+            vibrator.vibrate(VibrationEffect.createOneShot(millis, BUZZ_AMPLITUDE))
         } catch (e: Exception) {
             // A missing vibration motor must never break the direction finder.
         }
@@ -347,7 +349,16 @@ class DirectionFinderDialog(
         private const val WIFI_ASK_MS = 12_000L
         private const val MIN_SAMPLES = 6
         private const val TREND_DB = 2f
-        private const val BUZZ_COOLDOWN_MS = 2_200L
+
+        /** How long the one tap on entering the aligned state lasts. */
+        internal const val BUZZ_MS = 18L
+
+        /** 1 of 255: the faintest the motor can be asked for. */
+        internal const val BUZZ_AMPLITUDE = 1
+
+        /** Two seconds of quiet after a tap, so a wobbling needle never buzzes twice. */
+        internal const val BUZZ_COOLDOWN_MS = 2_000L
+
         private const val HEADING_SMOOTHING = 0.25f
     }
 }

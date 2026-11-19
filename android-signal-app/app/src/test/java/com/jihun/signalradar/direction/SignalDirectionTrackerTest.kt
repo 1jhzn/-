@@ -183,6 +183,42 @@ class SignalDirectionTrackerTest {
     }
 
     @Test
+    fun a_direction_keeps_an_average_instead_of_its_luckiest_packet() {
+        // Walls and a body in the path throw single packets 20 dB stronger. With a max-hold a
+        // sector would keep that one packet forever and the needle would follow it.
+        val tracker = SignalDirectionTracker()
+        val feed = Feed(tracker)
+        val sector = SignalDirectionTracker.sectorOf(90f)
+        repeat(6) { feed.sample(-80, 90f) }
+        val quiet = tracker.sectorValue(sector) ?: 0f
+        assertEquals(-80f, quiet, 0.5f)
+
+        feed.sample(-40, 90f)
+        val afterOne = tracker.sectorValue(sector) ?: 0f
+        assertTrue("quiet=$quiet afterOne=$afterOne", afterOne < -70f)
+
+        // A signal that really is that strong keeps pulling the average up.
+        repeat(12) { feed.sample(-50, 90f) }
+        val settled = tracker.sectorValue(sector) ?: 0f
+        assertTrue("settled=$settled", settled > -60f)
+    }
+
+    @Test
+    fun a_sector_average_cannot_be_faked_by_an_impossible_spike() {
+        val tracker = SignalDirectionTracker()
+        val feed = Feed(tracker)
+        feed.sample(-75, 0f, 6)
+        feed.sample(-75, 90f, 6)
+        feed.sample(-75, 180f, 6)
+        feed.sample(-75, 270f, 6)
+        // One wild packet in the east, quieter everywhere else.
+        feed.sample(-25, 90f)
+        val east = tracker.sectorValue(SignalDirectionTracker.sectorOf(90f)) ?: 0f
+        val west = tracker.sectorValue(SignalDirectionTracker.sectorOf(270f)) ?: 0f
+        assertTrue("east=$east west=$west", east - west < 15f)
+    }
+
+    @Test
     fun aligned_only_within_fifteen_degrees_of_the_peak() {
         val tracker = SignalDirectionTracker()
         seedFourSectors(tracker)

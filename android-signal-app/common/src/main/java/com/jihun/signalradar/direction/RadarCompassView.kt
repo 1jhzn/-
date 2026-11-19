@@ -145,7 +145,10 @@ class RadarCompassView @JvmOverloads constructor(
         drawDialBase(canvas, cx, cy, outer)
 
         canvas.save()
-        canvas.rotate(-shownHeading, cx, cy)
+        // The card turns back under the phone: a clockwise turn of the phone is a
+        // counter-clockwise turn of the dial, so N keeps pointing at the real north and a
+        // needle drawn at its own bearing lands where the signal really is.
+        canvas.rotate(CompassGeometry.dialRotation(shownHeading), cx, cy)
         drawTicks(canvas, cx, cy, outer)
         drawCardinals(canvas, cx, cy, outer)
         drawHeatArcs(canvas, cx, cy, outer)

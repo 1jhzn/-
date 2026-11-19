@@ -31,8 +31,13 @@ import java.util.UUID
  * Two budgets keep the button from feeling broken: [TIMEOUT_MS] for the whole attempt, and
  * [READ_TIMEOUT_MS] once the services are discovered, because many modern phones, AirPods and
  * trackers accept the connection and then simply never answer a read that wants pairing.
+ * The read budget is short on purpose: a device that publishes Device Name after discovery
+ * answers in 100–300 ms, so anything still silent after 0.7 s is refusing rather than slow —
+ * waiting longer only made 지훈 stare at "이름 읽는 중…". The whole budget stays 3.5 s because
+ * the connect itself can be slow on older earphones.
  * The result reaches the screen before the connection is torn down: `disconnect()` and
  * `close()` take the BLE stack's synchronous lock, so they run on their own thread.
+ * [cancel] settles the attempt from the button ("⏹ 읽기 멈추기") without reporting a result.
  */
 class GattNameReader(
     private val context: Context,
@@ -234,8 +239,11 @@ class GattNameReader(
         /** Budget for connect + service discovery + the single name read, all told. */
         internal const val TIMEOUT_MS = 3_500L
 
-        /** Budget for the one read once the device has accepted the connection. */
-        internal const val READ_TIMEOUT_MS = 2_000L
+        /**
+         * Budget for the one read once the device has accepted the connection. A device that
+         * answers at all does so in a few hundred milliseconds here.
+         */
+        internal const val READ_TIMEOUT_MS = 700L
 
         internal const val READING_MESSAGE = "기기 이름 읽는 중…"
 

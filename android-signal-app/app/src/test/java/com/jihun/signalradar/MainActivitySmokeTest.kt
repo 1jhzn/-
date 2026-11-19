@@ -31,6 +31,26 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun the_bell_at_the_top_turns_the_new_signal_buzz_off_and_on() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val repo = SignalRepository(ApplicationProvider.getApplicationContext())
+        val bell = activity.findViewById<android.widget.TextView>(R.id.bellToggle)
+        assertNotNull("the 🔔 switch must be in the header", bell)
+        assertEquals("🔔", bell.text.toString())
+        assertTrue(repo.vibrateOnNewSignal())
+
+        bell.performClick()
+        assertEquals("🔕", bell.text.toString())
+        assertFalse(repo.vibrateOnNewSignal())
+
+        bell.performClick()
+        assertEquals("🔔", bell.text.toString())
+        assertTrue(repo.vibrateOnNewSignal())
+        controller.pause().stop().destroy()
+    }
+
+    @Test
     fun vendor_tables_load_from_assets() {
         val context = ApplicationProvider.getApplicationContext<android.app.Application>()
         VendorDb.ensureLoaded(context)
@@ -62,11 +82,11 @@ class MainActivitySmokeTest {
 
     @Test
     fun distance_labels_read_like_a_person_would_say_them() {
-        // BLE: reference -59 dBm at 1 m, exponent 2.
+        // BLE: reference -59 dBm at 1 m, indoor path loss exponent 2.8.
         assertEquals("50cm 이내", Classifier.distanceLabel(-40, SignalSource.BLE))
-        assertEquals("약 0.6m", Classifier.distanceLabel(-55, SignalSource.BLE))
-        assertEquals("약 3.5m", Classifier.distanceLabel(-70, SignalSource.BLE))
-        assertEquals("약 35m", Classifier.distanceLabel(-90, SignalSource.BLE))
+        assertEquals("약 0.7m", Classifier.distanceLabel(-55, SignalSource.BLE))
+        assertEquals("약 2.5m", Classifier.distanceLabel(-70, SignalSource.BLE))
+        assertEquals("약 13m", Classifier.distanceLabel(-90, SignalSource.BLE))
 
         // The advertisement's own 1 m reference beats the default guess.
         assertEquals(
@@ -74,19 +94,37 @@ class MainActivitySmokeTest {
             Classifier.distanceLabel(-48, SignalSource.BLE, txPower = -50)
         )
 
-        // Wi-Fi: each band starts from a different level at 1 m, indoor exponent 2.6.
-        assertEquals("약 14m", Classifier.distanceLabel(-70, SignalSource.WIFI, frequencyMhz = 2437))
-        assertEquals("약 8.4m", Classifier.distanceLabel(-70, SignalSource.WIFI, frequencyMhz = 5180))
-        assertEquals("약 6.4m", Classifier.distanceLabel(-70, SignalSource.WIFI, frequencyMhz = 6135))
+        // Wi-Fi: each band starts from a different level at 1 m, indoor exponent 2.9.
+        assertEquals("약 11m", Classifier.distanceLabel(-70, SignalSource.WIFI, frequencyMhz = 2437))
+        assertEquals("약 6.7m", Classifier.distanceLabel(-70, SignalSource.WIFI, frequencyMhz = 5180))
+        assertEquals("약 5.3m", Classifier.distanceLabel(-70, SignalSource.WIFI, frequencyMhz = 6135))
+    }
+
+    /**
+     * The indoor exponent must make a room-sized reading a room-sized distance: at the old
+     * free-space n = 2 the same -70 dBm BLE reading was 3.5 m and a 2.4 GHz router was 14 m,
+     * which is what 지훈 saw as "거리도 안맞는거 같고".
+     */
+    @Test
+    fun indoor_exponents_keep_distances_from_being_exaggerated() {
+        val ble = Classifier.distanceMeters(-70, SignalSource.BLE) ?: 0.0
+        val router = Classifier.distanceMeters(
+            -70.0, SignalSource.WIFI, null, 2437
+        ) ?: 0.0
+        assertTrue("ble=$ble", ble in 2.3..2.7)
+        assertTrue("router=$router", router in 10.0..11.5)
+        // 5 and 6 GHz lose more on the way, so the same level means a shorter distance.
+        val five = Classifier.distanceMeters(-70.0, SignalSource.WIFI, null, 5180) ?: 0.0
+        assertTrue("five=$five", five < router)
     }
 
     @Test
     fun an_output_power_in_the_tx_power_field_is_not_a_one_metre_level() {
         // Apple (and some other chips) put the antenna's output power there, e.g. +12 dBm.
         // Reading that as the 1 m reference turned a phone right next to the radar into "60m+".
-        // The screenshot case: an Apple device at -70 dBm read as "60m+" instead of 3.5 m.
-        assertEquals("약 3.5m", Classifier.distanceLabel(-70, SignalSource.BLE, txPower = 12))
-        assertEquals("약 3.5m", Classifier.distanceLabel(-70, SignalSource.BLE))
+        // The screenshot case: an Apple device at -70 dBm read as "60m+" instead of 2.5 m.
+        assertEquals("약 2.5m", Classifier.distanceLabel(-70, SignalSource.BLE, txPower = 12))
+        assertEquals("약 2.5m", Classifier.distanceLabel(-70, SignalSource.BLE))
         assertFalse(Classifier.isOneMetreTxPower(12))
         assertFalse(Classifier.isOneMetreTxPower(0))
         assertFalse(Classifier.isOneMetreTxPower(-10))

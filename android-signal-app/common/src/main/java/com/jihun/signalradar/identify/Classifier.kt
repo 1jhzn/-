@@ -172,9 +172,13 @@ object Classifier {
      *
      * Bluetooth: the advertisement often carries the transmitter's own "how strong am I at
      * 1 m" value; when it does, that is far better than a generic guess, so it wins.
-     * Wi-Fi: each band starts from a different level at 1 m and 5/6 GHz loses more on the way,
-     * and indoors walls eat signal fast — n = 2.6 keeps "next room" from reading as 40 m.
-     * Phone antennas and walls still make this an estimate, not a measurement.
+     * Wi-Fi: each band starts from a different level at 1 m and 5/6 GHz loses more on the way.
+     *
+     * Both exponents are indoor values (지훈's rooms: walls, furniture, his own body in the
+     * path). Free space (n = 2) made a router in the next room read as 14 m; n = 2.8–2.9
+     * shrinks that to a believable distance and, because the exponent divides the dB spread,
+     * also stops the number jittering as much. Phone antennas and walls still make this an
+     * estimate, not a measurement.
      */
     fun distanceMeters(rssi: Int, source: SignalSource): Double? =
         distanceMeters(rssi.toDouble(), source, null, null)
@@ -260,8 +264,12 @@ object Classifier {
     }
 
     private const val BLE_REF_1M = -59.0
-    private const val BLE_EXPONENT = 2.0
-    private const val WIFI_EXPONENT = 2.6
+
+    /** Indoor path loss exponent for Bluetooth: 2.8, not the free-space 2. */
+    private const val BLE_EXPONENT = 2.8
+
+    /** Indoor path loss exponent for Wi-Fi: 2.9 (5/6 GHz lose a little more on the way). */
+    private const val WIFI_EXPONENT = 2.9
     private const val TX_POWER_MIN = -100
     private const val TX_POWER_MAX = -20
 }

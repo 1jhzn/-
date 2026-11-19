@@ -22,8 +22,8 @@ android {
         applicationId = "com.jihun.signalradar.nearby"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.4"
     }
 
     // The scanning, identifying and drawing code is shared with :app through one source

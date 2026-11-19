@@ -86,6 +86,33 @@ class DetailDialogTest {
     }
 
     @Test
+    fun a_name_read_can_be_stopped_by_the_same_button() {
+        // 지훈: "이름 읽는 시간을 내가 멈출수있게 해줘". While the read runs the button says so
+        // and stays tappable; the next tap ends the connection instead of waiting it out.
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        org.junit.Assume.assumeTrue("no bluetooth adapter in this runtime", manager.adapter != null)
+        org.robolectric.Shadows.shadowOf(context).grantPermissions(
+            android.Manifest.permission.BLUETOOTH_CONNECT,
+            android.Manifest.permission.BLUETOOTH_SCAN
+        )
+
+        val dialog = openDetail(bleSignal())
+        val button = dialog.findViewById<TextView>(R.id.detailGattButton)
+        val message = dialog.findViewById<TextView>(R.id.detailGattResult)
+
+        button.performClick()
+        assertEquals(SignalRadarActivity.STOP_READ_LABEL, button.text.toString())
+        assertTrue("the stop button must stay tappable", button.isEnabled)
+
+        button.performClick()
+        assertEquals(SignalRadarActivity.READ_LABEL, button.text.toString())
+        assertTrue(button.isEnabled)
+        assertEquals(SignalRadarActivity.STOPPED_MESSAGE, message.text.toString())
+        dialog.dismiss()
+    }
+
+    @Test
     fun an_unnamed_device_says_so_instead_of_inventing_a_name() {
         val dialog = openDetail(
             bleSignal(title = "이름 없는 블루투스 기기", broadcastName = null, isConnected = false, isBonded = false)

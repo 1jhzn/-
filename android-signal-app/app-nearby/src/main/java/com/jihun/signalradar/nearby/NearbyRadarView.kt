@@ -15,6 +15,7 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.jihun.signalradar.R
+import com.jihun.signalradar.direction.CompassGeometry
 import com.jihun.signalradar.identify.DeviceType
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
@@ -247,8 +248,8 @@ class NearbyRadarView @JvmOverloads constructor(
         val angles = angles()
         val sorted = blips.sortedWith(compareBy({ it.metres }, { it.signal.address }))
         for (blip in sorted) {
-            val angle = blip.bearing ?: angles[blip.signal.address] ?: 0f
-            val rad = Math.toRadians(NearbyRadarMath.normalize(angle - shownHeading).toDouble())
+            val angle = CompassGeometry.screenAngle(blip.bearing ?: angles[blip.signal.address] ?: 0f, shownHeading)
+            val rad = Math.toRadians(angle.toDouble())
             val sinA = sin(rad).toFloat()
             val cosA = cos(rad).toFloat()
             // A device at 0.2 m would land on the "나" marker; keep every dot outside it.

@@ -48,7 +48,7 @@ class NearbyRadarMathTest {
             signal("ble:airpods", SignalSource.BLE, "지훈의 AirPods", -48, txPower = -52),
             signal("ble:buds", SignalSource.BLE, "버즈", -74),
             signal("wifi:5g", SignalSource.WIFI, "iptime_5G", -62, frequencyMhz = 5745),
-            // 2.4 GHz at -70 dBm is about 14 m: outside the circle.
+            // 2.4 GHz at -70 dBm is about 11 m indoors: outside the circle.
             signal("wifi:2g", SignalSource.WIFI, "KT_GIGA_2G", -70, frequencyMhz = 2437),
             // A base station's level says nothing about its distance.
             signal("cell:1", SignalSource.CELL, "LTE 450-3", -85)
@@ -56,9 +56,9 @@ class NearbyRadarMathTest {
 
         val blips = NearbyRadarMath.nearbyBlips(signals) { null }
 
-        // 0.8 m AirPods, ~4.1 m router, ~5.6 m buds: nearest first.
+        // 0.7 m AirPods, ~3.4 m buds, ~3.6 m router: nearest first.
         assertEquals(
-            listOf("ble:airpods", "wifi:5g", "ble:buds"),
+            listOf("ble:airpods", "ble:buds", "wifi:5g"),
             blips.map { it.signal.id }
         )
         // Nearest first, and all of them inside the outer ring.

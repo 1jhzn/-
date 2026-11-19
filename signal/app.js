@@ -376,7 +376,7 @@ function classify(rec) {
     reasons.push('삼성 스마트태그 서비스 데이터');
   }
   if (!cands.length && cdat) {
-    cands.push({ s: 1, cat: cdat.k || 'unknown', kind: cdat.kind || (cdat.n + ' 기기'), ico: '📶' });
+    cands.push({ s: 1, cat: cdat.k || 'unknown', kind: cdat.kind || (cdat.n + ' 기기'), ico: (CAT[cdat.k || 'unknown'] || CAT.unknown).ico });
   }
 
   var best = null;
@@ -597,17 +597,23 @@ function hideBanner() {
 }
 
 /* ---------------- 렌더링 ---------------- */
-var renderPending = false, lastRender = 0;
+var renderPending = false, lastRender = 0, lastStaleSig = '';
+function staleSig() {
+  var t = Date.now(), s = String(state.devices.size);
+  state.devices.forEach(function (r) { s += (t - r.lastSeen > 45000) ? '1' : '0'; });
+  return s;
+}
 function scheduleRender() {
   if (renderPending) return;
   renderPending = true;
-  var wait = Math.max(0, 350 - (Date.now() - lastRender));
+  var wait = Math.max(0, 450 - (Date.now() - lastRender));
   setTimeout(function () { renderPending = false; renderNow(); }, wait);
 }
 
 function renderNow() {
   lastRender = Date.now();
   state.dirty = false;
+  lastStaleSig = staleSig();
   renderStatus();
   renderList();
   renderRadarStatic();
@@ -1526,8 +1532,11 @@ function init() {
   document.addEventListener('visibilitychange', function () { if (!document.hidden) { sizeCanvas(); renderNow(); } });
   window.addEventListener('resize', function () { sizeCanvas(); renderNow(); });
 
-  // 45초마다 '오래됨' 표시 갱신
-  setInterval(function () { if (!$('#tab-scan').hidden) renderNow(); }, 5000);
+  // 45초가 지나 '오래됨' 표시가 바뀌었을 때만 다시 그린다 (화면을 건드리지 않도록)
+  setInterval(function () {
+    if ($('#tab-scan').hidden) return;
+    if (staleSig() !== lastStaleSig) renderNow();
+  }, 5000);
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

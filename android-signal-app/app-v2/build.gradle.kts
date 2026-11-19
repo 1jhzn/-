@@ -13,6 +13,9 @@ plugins {
  * phone keeps all three and nothing the user already has is replaced. The version starts at
  * 1 / "2.0" because this line of the app is new.
  *
+ * v2.2 adds the 기준 tab's list: several named baselines, one in use, each renameable and
+ * deletable, plus `🧹 기준 초기화` (see [com.jihun.signalradar.v2.V2BaselineStore]).
+ *
  * Both tabs are here in one app (📏 거리 + 📡 내 주변 10m 레이더), and the UI is the v2 pass:
  * the empty state sits at the top of the list, the scan button reads 스캔 중지 while scanning,
  * the filter chips wrap onto two rows instead of being cut off, a card is a title plus one
@@ -30,8 +33,8 @@ android {
         applicationId = "com.jihun.signalradar.v2"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.1"
+        versionCode = 3
+        versionName = "2.2"
     }
 
     sourceSets {

@@ -113,15 +113,15 @@ class V2UiTest {
     // ------------------------------------------------------------- app identity
 
     @Test
-    fun it_is_a_separate_app_with_its_own_package_name_and_the_21_version() {
+    fun it_is_a_separate_app_with_its_own_package_name_and_the_22_version() {
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
         assertEquals("com.jihun.signalradar.v2", activity.packageName)
         assertEquals("전파 감지기 v2", activity.getString(R.string.app_name_v2))
 
         val info = activity.packageManager.getPackageInfo(activity.packageName, 0)
-        assertEquals("2.1", info.versionName)
-        assertEquals(2, info.versionCode)
+        assertEquals("2.2", info.versionName)
+        assertEquals(3, info.versionCode)
         controller.pause().stop().destroy()
     }
 
@@ -548,14 +548,15 @@ class V2UiTest {
         val activity = controller.get()
         val repo = repoOf(activity)
         repo.upsert(listOf(bleSignal(), wifiSignal()))
-        activity.findViewById<View>(R.id.btnBaseline).performClick()
+        saveBaseline(activity, "우리 집")
         refresh()
 
         activity.findViewById<View>(R.id.tabRecord).performClick()
         assertEquals(2, repo.baselineSize())
-        assertEquals("기준 2 개", activity.findViewById<TextView>(R.id.v2RecordCount).text.toString())
+        assertEquals("우리 집", activity.findViewById<TextView>(R.id.v2RecordName).text.toString())
+        assertEquals("기기 2개", activity.findViewById<TextView>(R.id.v2RecordCount).text.toString())
         assertTrue(
-            activity.findViewById<TextView>(R.id.recordSummary).text.contains("저장된 기준: 2")
+            activity.findViewById<TextView>(R.id.recordSummary).text.contains("적용 중 ‘우리 집’")
         )
 
         val row = activity.findViewById<View>(R.id.v2VibrateRow)
@@ -568,6 +569,15 @@ class V2UiTest {
         assertTrue(repo.vibrateOnNewSignal())
         assertEquals("🔔 켜짐", activity.findViewById<TextView>(R.id.v2VibrateState).text.toString())
         controller.pause().stop().destroy()
+    }
+
+    /** `📌 지금 신호를 새 기준으로 저장` → the name card → 저장. */
+    private fun saveBaseline(activity: V2RadarActivity, name: String) {
+        activity.findViewById<View>(R.id.btnBaseline).performClick()
+        val dialog = ShadowDialog.getLatestDialog()
+        dialog.findViewById<android.widget.EditText>(R.id.nameDialogInput).setText(name)
+        dialog.findViewById<View>(R.id.nameDialogOk).performClick()
+        refresh()
     }
 
     // ------------------------------------------------------------- helpers

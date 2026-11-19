@@ -11,6 +11,7 @@ import com.jihun.signalradar.SignalRadarActivity
 import com.jihun.signalradar.SignalRepository
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,16 +26,16 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * Draws 전파 감지기 v2.1 into PNGs so the new look can be checked by eye without a phone:
+ * Draws 전파 감지기 v2.2 into PNGs so the screens can be checked by eye without a phone:
  *
- *  - `v21-home-sheet.png`   — the pastel top area, the callout, the white sheet with the step
+ *  - `v22-home-sheet.png`   — the pastel top area, the callout, the white sheet with the step
  *                             badges and the pill tab bar
- *  - `v21-empty-scanning.png` — empty state at the top of the list, `■ 스캔 중지`
- *  - `v21-nearby-radar.png` — the bright 10 m radar with 블루투스/와이파이 dots
- *  - `v21-orb-dark.png`     — the finder while the signal is still "보통"
- *  - `v21-orb-emerald.png`  — the arrival screen once 매우 가까움 is held
+ *  - `v22-empty-scanning.png` — empty state at the top of the list, `■ 스캔 중지`
+ *  - `v22-nearby-radar.png` — the bright 10 m radar with 블루투스/와이파이 dots
+ *  - `v22-orb-dark.png`     — the finder while the signal is still "보통"
+ *  - `v22-orb-emerald.png`  — the arrival screen once 매우 가까움 is held
  *  - `v21-record.png`       — the 기준 tab
- *  - `v21-detail-folded.png` — the white detail card with the MAC folded away
+ *  - `v22-detail-folded.png` — the white detail card with the MAC folded away
  *
  * Each also asserts it produced a real PNG, so a normal test run keeps them up to date.
  */
@@ -156,7 +157,7 @@ class V2PreviewTest {
             "F8:1E:DF:12:34:56", -41, txPower = -52, connected = true, bonded = true
         )
         activity.findViewById<TextView>(R.id.v2CalloutTitle).text = first.title
-        capture(activity, "v21-home-sheet.png", 1233, 2673)
+        capture(activity, "v22-home-sheet.png", 1233, 2673)
         controller.pause().stop().destroy()
     }
 
@@ -167,7 +168,7 @@ class V2PreviewTest {
         val activity = controller.get()
         activity.findViewById<TextView>(R.id.btnScan).performClick()
         refresh()
-        capture(activity, "v21-empty-scanning.png", 1233, 2673)
+        capture(activity, "v22-empty-scanning.png", 1233, 2673)
         controller.pause().stop().destroy()
     }
 
@@ -180,7 +181,7 @@ class V2PreviewTest {
         refresh()
         activity.findViewById<View>(R.id.tabNearby).performClick()
         refresh()
-        capture(activity, "v21-nearby-radar.png", 1233, 2673)
+        capture(activity, "v22-nearby-radar.png", 1233, 2673)
         controller.pause().stop().destroy()
     }
 
@@ -197,7 +198,7 @@ class V2PreviewTest {
             heading = 40f,
             peak = 150f
         )
-        capture(activity, "v21-orb-dark.png", 1233, 2673)
+        capture(activity, "v22-orb-dark.png", 1233, 2673)
         controller.pause().stop().destroy()
     }
 
@@ -214,7 +215,7 @@ class V2PreviewTest {
             heading = 150f,
             peak = 150f
         )
-        capture(activity, "v21-orb-emerald.png", 1233, 2673)
+        capture(activity, "v22-orb-emerald.png", 1233, 2673)
         controller.pause().stop().destroy()
     }
 
@@ -223,14 +224,69 @@ class V2PreviewTest {
         grantScanPermissions()
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
-        repoOf(activity).apply {
-            upsert(samples())
-            saveBaseline()
-        }
+        // Three named 기준, saved one after another as 지훈 would: the newest is in use.
+        val all = samples()
+        repoOf(activity).upsert(all.take(2))
+        saveBaseline(activity, "우리 집")
+        repoOf(activity).upsert(all.subList(2, 4))
+        saveBaseline(activity, "2학년 1반")
+        repoOf(activity).upsert(all.subList(4, all.size))
+        saveBaseline(activity, "복도")
         refresh()
         activity.findViewById<View>(R.id.tabRecord).performClick()
-        capture(activity, "v21-record.png", 1233, 2673)
+        refresh()
+        capture(activity, "v22-record.png", 1233, 2673)
+
+        // The brief's screenshot has to show the reset button, so the three cards plus the
+        // keep/wipe buttons must fit the sheet without scrolling.
+        val page = activity.findViewById<View>(R.id.recordPage)
+        val reset = activity.findViewById<View>(R.id.v2RecordReset)
+        assertEquals(View.VISIBLE, reset.visibility)
+        assertTrue(
+            "기준 초기화 must be inside the sheet: reset.bottom=${reset.bottom} page.height=${page.height}",
+            reset.bottom <= page.height
+        )
         controller.pause().stop().destroy()
+    }
+
+
+    @Test
+    fun render_the_record_tab_before_anything_is_saved() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(samples())
+        refresh()
+        activity.findViewById<View>(R.id.tabRecord).performClick()
+        refresh()
+        capture(activity, "v22-record-empty.png", 1233, 2673)
+        // Nothing saved: the reset button is away and the save button is the thing to press.
+        assertEquals(View.GONE, activity.findViewById<View>(R.id.v2RecordReset).visibility)
+        assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.btnBaseline).visibility)
+        controller.pause().stop().destroy()
+    }
+
+    @Test
+    fun render_the_name_card_that_asks_for_a_baseline_name() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(samples())
+        refresh()
+        activity.findViewById<View>(R.id.btnBaseline).performClick()
+        val dialog = ShadowDialog.getLatestDialog()
+        renderDialog(dialog, "v22-name-card.png")
+        dialog.dismiss()
+        controller.pause().stop().destroy()
+    }
+
+    /** The 기준 tab's save button asks for a name: 버튼 → 이름 → 저장. */
+    private fun saveBaseline(activity: V2RadarActivity, name: String) {
+        activity.findViewById<View>(R.id.btnBaseline).performClick()
+        val dialog = ShadowDialog.getLatestDialog()
+        dialog.findViewById<android.widget.EditText>(R.id.nameDialogInput).setText(name)
+        dialog.findViewById<View>(R.id.nameDialogOk).performClick()
+        refresh()
     }
 
     @Test
@@ -242,7 +298,7 @@ class V2PreviewTest {
         method.isAccessible = true
         method.invoke(activity, samples().first())
         val dialog = ShadowDialog.getLatestDialog()
-        renderDialog(dialog, "v21-detail-folded.png")
+        renderDialog(dialog, "v22-detail-folded.png")
         dialog.dismiss()
         controller.pause().stop().destroy()
     }

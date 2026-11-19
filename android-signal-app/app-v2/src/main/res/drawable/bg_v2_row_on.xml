@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the 기준 card that is in use: the soft row, tinted emerald with a matching outline, so
+     the one being compared against is visible at a glance next to the plain cards. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/v2_emerald_soft" />
+    <corners android:radius="16dp" />
+    <stroke android:width="1.5dp" android:color="#8FE0B4" />
+</shape>

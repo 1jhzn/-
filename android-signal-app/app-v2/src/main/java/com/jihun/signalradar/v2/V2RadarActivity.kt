@@ -7,8 +7,13 @@ import android.os.Handler
 import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.view.WindowManager
+import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
@@ -25,15 +30,21 @@ import com.jihun.signalradar.nearby.NearbyRadarMath
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
- * 전파 감지기 v2.1 — the "나의 찾기" (Find My) style screens, still one separately installable
+ * 전파 감지기 v2.2 — the "나의 찾기" (Find My) style screens, still one separately installable
  * app (`com.jihun.signalradar.v2`) that leaves 전파 감지기 and 내 주변 untouched.
  *
  * What this class adds over the shared screen: the pastel top area with the nearest-signal
  * callout or the bright 10 m radar, the white rounded sheet with its grab handle, the big
  * title and the round scan button, the pill tab bar (신호 · 내 주변 · 기준), and the 신호 찾기
  * (orb) screen that starts dark and turns emerald when the signal is in reach.
+ *
+ * v2.2 adds the 기준 tab's list ([V2BaselineStore]): several saved baselines under their own
+ * names, one of them in use, each renameable and deletable, and `🧹 기준 초기화` to drop them
+ * all. The 기준 in use is what the 🚨 새 신호 check compares against, so switching one is felt
+ * immediately.
  *
  * Everything that reads radios, keeps the list, spots new signals, folds the MAC address,
  * reads the device name over GATT (0.7 s + ⏹ 읽기 멈추기) and measures the direction is
@@ -93,11 +104,21 @@ class V2RadarActivity : SignalRadarActivity() {
     private lateinit var radarLegend: View
 
     private lateinit var recordHero: View
+    private lateinit var recordName: TextView
     private lateinit var recordCount: TextView
     private lateinit var recordSavedAt: TextView
     private lateinit var recordSummary: TextView
+    private lateinit var recordCards: LinearLayout
+    private lateinit var recordEmpty: TextView
+    private lateinit var recordReset: TextView
     private lateinit var vibrateRow: View
     private lateinit var vibrateState: TextView
+
+    /** The saved 기준 (v2.2): several named baselines, one of them in use. */
+    private lateinit var store: V2BaselineStore
+
+    /** What the 기준 tab was last drawn for, so 0.8 s ticks do not rebuild its cards. */
+    private var recordKey: String? = null
 
     private lateinit var signalPage: View
     private lateinit var nearbyPage: View
@@ -166,9 +187,13 @@ class V2RadarActivity : SignalRadarActivity() {
         radarLegend = findViewById(R.id.nearbyLegend)
 
         recordHero = findViewById(R.id.v2RecordHero)
+        recordName = findViewById(R.id.v2RecordName)
         recordCount = findViewById(R.id.v2RecordCount)
         recordSavedAt = findViewById(R.id.v2RecordSavedAt)
         recordSummary = findViewById(R.id.recordSummary)
+        recordCards = findViewById(R.id.v2RecordList)
+        recordEmpty = findViewById(R.id.v2RecordEmpty)
+        recordReset = findViewById(R.id.v2RecordReset)
         vibrateRow = findViewById(R.id.v2VibrateRow)
         vibrateState = findViewById(R.id.v2VibrateState)
 
@@ -211,6 +236,18 @@ class V2RadarActivity : SignalRadarActivity() {
         }
         radar.onBlipClick = { openOrbFinder(it) }
         radarFullscreenToggle.setOnClickListener { setRadarFullscreen(!radarFullscreen) }
+
+        // v2.2: the saved 기준 list. The shared screen wires `btnBaseline` to a nameless save;
+        // here the same button asks for a name first and keeps the result in the store.
+        findViewById<TextView>(R.id.btnBaseline).setOnClickListener { promptNewBaseline() }
+        recordReset.setOnClickListener { confirmResetBaselines() }
+
+        store = V2BaselineStore(this)
+        // A 기준 saved by v2.1 becomes a normal named one, and the repository is made to match
+        // whatever this list says is in use.
+        store.adoptLegacy()
+        store.applyActiveTo(repo)
+        recordKey = null
 
         tabSignal.setOnClickListener { selectTab(Tab.SIGNALS) }
         tabNearby.setOnClickListener { selectTab(Tab.NEARBY) }
@@ -273,6 +310,10 @@ class V2RadarActivity : SignalRadarActivity() {
             Tab.RECORD -> "기준 기록"
         }
         renderTabs()
+        if (next == Tab.RECORD) {
+            recordKey = null
+            renderRecord()
+        }
         if (next == Tab.NEARBY) startCompass() else if (!orbOpen) stopCompass()
         if (next == Tab.NEARBY) {
             radar.invalidate()
@@ -344,6 +385,7 @@ class V2RadarActivity : SignalRadarActivity() {
         styleStatus(newOnes.size)
         renderVibrate(orbOpen && orb.emeraldProgress(System.currentTimeMillis()) > 0.5f)
         renderRecord()
+        renderStatusLine(all)
     }
 
     /**
@@ -427,19 +469,165 @@ class V2RadarActivity : SignalRadarActivity() {
     }
 
     private fun renderRecord() {
-        val saved = repo.baselineSize()
-        val at = repo.baselineSavedAt()
-        recordCount.text = "기준 $saved 개"
-        recordSavedAt.text = if (at > 0L) {
-            "${clock(at)} 저장 · 그 뒤 처음 나타난 신호를 알려드려요"
-        } else {
+        val active = store.active()
+        val key = recordSignature(active)
+        if (key == recordKey) return
+        recordKey = key
+
+        recordName.text = active?.name ?: NO_BASELINE
+        recordCount.text = if (active == null) {
             "아직 기준을 저장하지 않았어요"
-        }
-        recordSummary.text = if (at > 0L) {
-            "저장된 기준: $saved 개 · ${clock(at)}"
         } else {
-            "저장된 기준: 0개"
+            "기기 ${active.size}개"
         }
+        recordSavedAt.text = active?.let { "${clock(it.savedAt)} 저장" } ?: ""
+        recordSummary.text = if (active == null) {
+            "저장된 기준"
+        } else {
+            "저장된 기준 ${store.count()}개 · 적용 중 ‘${active.name}’"
+        }
+        recordEmpty.visibility = if (store.isEmpty()) View.VISIBLE else View.GONE
+        recordReset.visibility = if (store.isEmpty()) View.GONE else View.VISIBLE
+        renderBaselineCards(active)
+    }
+
+    /** Everything the 기준 tab draws, in one string, so a tick with nothing new is free. */
+    private fun recordSignature(active: V2BaselineStore.Baseline?): String = buildString {
+        append(active?.id ?: "-").append('|')
+        for (item in store.all()) {
+            append(item.id).append(':').append(item.name).append(':')
+                .append(item.savedAt).append(':').append(item.size).append('|')
+        }
+    }
+
+    /** One card per saved 기준: 이름 · 적용 중 · 기기 수 · 저장 시각, then 이름 바꾸기 / 삭제. */
+    private fun renderBaselineCards(active: V2BaselineStore.Baseline?) {
+        recordCards.removeAllViews()
+        val inflater = LayoutInflater.from(this)
+        for (item in store.all()) {
+            val card = inflater.inflate(R.layout.item_baseline_v2, recordCards, false)
+            val applied = item.id == active?.id
+            card.findViewById<TextView>(R.id.baselineName).text = item.name
+            card.findViewById<TextView>(R.id.baselineActive).visibility =
+                if (applied) View.VISIBLE else View.GONE
+            card.findViewById<TextView>(R.id.baselineMeta).text =
+                "기기 ${item.size}개 · ${clock(item.savedAt)} 저장"
+            card.setBackgroundResource(
+                if (applied) R.drawable.bg_v2_row_on else R.drawable.bg_v2_row
+            )
+            card.setOnClickListener { activateBaseline(item.id) }
+            card.findViewById<View>(R.id.baselineRename).setOnClickListener {
+                promptRenameBaseline(item)
+            }
+            card.findViewById<View>(R.id.baselineDelete).setOnClickListener {
+                confirmDeleteBaseline(item)
+            }
+            recordCards.addView(card)
+        }
+    }
+
+    // ------------------------------------------------------- 기준 actions (v2.2)
+
+    /** The devices heard right now with their level — the shape a 기준 is saved in. */
+    private fun liveEntries(): Map<String, Int> {
+        val map = LinkedHashMap<String, Int>()
+        for (signal in repo.snapshot()) {
+            if (signal.source == SignalSource.CELL) continue
+            map[signal.id] = (signal.smoothedRssi ?: signal.rssi.toFloat()).roundToInt()
+        }
+        return map
+    }
+
+    /** `📌 지금 신호를 새 기준으로 저장`: ask for a name, then save and start using it. */
+    private fun promptNewBaseline() {
+        val entries = liveEntries()
+        if (entries.isEmpty()) {
+            toast("아직 잡힌 신호가 없어요 · ‘스캔 시작’을 먼저 눌러 주세요")
+            return
+        }
+        showNameDialog(
+            title = "새 기준 이름",
+            hint = "예: 우리 집 · 2학년 1반 · 복도",
+            initial = "",
+            okLabel = "저장"
+        ) { name ->
+            val item = store.add(name, entries)
+            store.applyActiveTo(repo)
+            onBaselinesChanged()
+            toast("‘${item.name}’ 기준으로 기기 ${item.size}개를 저장했어요")
+        }
+    }
+
+    private fun promptRenameBaseline(item: V2BaselineStore.Baseline) {
+        showNameDialog(
+            title = "기준 이름 바꾸기",
+            hint = "지금 이름: ${item.name}",
+            initial = item.name,
+            okLabel = "바꾸기"
+        ) { name ->
+            val renamed = store.rename(item.id, name) ?: return@showNameDialog
+            onBaselinesChanged()
+            toast(
+                if (renamed.name == item.name) {
+                    "이름을 그대로 두었어요"
+                } else {
+                    "‘${renamed.name}’ 이름으로 바꿨어요"
+                }
+            )
+        }
+    }
+
+    private fun confirmDeleteBaseline(item: V2BaselineStore.Baseline) {
+        showConfirmDialog(
+            title = "‘${item.name}’ 기준을 지울까요?",
+            message = "기기 ${item.size}개를 담은 이 기준이 사라져요. 다른 기준은 그대로 남아요.",
+            okLabel = "지우기"
+        ) {
+            val wasActive = store.activeId() == item.id
+            store.delete(item.id)
+            store.applyActiveTo(repo)
+            onBaselinesChanged()
+            val next = store.active()
+            toast(
+                if (wasActive && next != null) {
+                    "‘${item.name}’을 지웠어요 · 이제 ‘${next.name}’ 기준을 써요"
+                } else {
+                    "‘${item.name}’ 기준을 지웠어요"
+                }
+            )
+        }
+    }
+
+    /** `🧹 기준 초기화`: every saved 기준 and the 🚨 새 신호 state go back to the start. */
+    private fun confirmResetBaselines() {
+        val count = store.count()
+        if (count == 0) return
+        showConfirmDialog(
+            title = "기준을 모두 지울까요?",
+            message = "저장한 기준 ${count}개와 이름이 모두 사라지고, 🚨 새 신호 표시도 처음 상태로 돌아가요.",
+            okLabel = "모두 지우기"
+        ) {
+            store.clearAll()
+            store.applyActiveTo(repo)
+            onBaselinesChanged()
+            toast("기준을 초기화했어요 · 다시 저장하면 새 신호를 알려드려요")
+        }
+    }
+
+    /** Tapping a 기준 card makes it the one the 🚨 새 신호 check compares against. */
+    private fun activateBaseline(id: String) {
+        val item = store.setActive(id) ?: return
+        store.applyActiveTo(repo)
+        onBaselinesChanged()
+        toast("‘${item.name}’ 기준으로 바꿨어요 · 이 기준에 없던 신호만 새 신호로 알려드려요")
+    }
+
+    /** Redraw the 기준 tab and the lists at once, without waiting for the next shared tick. */
+    private fun onBaselinesChanged() {
+        recordKey = null
+        renderRecord()
+        val all = repo.snapshot()
+        onSignalsChanged(all, all.filter { it.isNew })
     }
 
     /** [emerald] keeps the 진동 button readable once the finder screen turns green. */
@@ -750,6 +938,78 @@ class V2RadarActivity : SignalRadarActivity() {
 
     // --------------------------------------------------------------- utils
 
+    /**
+     * The 기준 name card: one text box, used both for a new 기준 and for renaming one.
+     * A blank answer is passed through as "" — the store turns that into `기준 1` when saving
+     * and keeps the old name when renaming.
+     */
+    private fun showNameDialog(
+        title: String,
+        hint: String,
+        initial: String,
+        okLabel: String,
+        onDone: (String) -> Unit
+    ) {
+        val dialog = Dialog(this, R.style.Theme_SignalRadar_Dialog)
+        dialog.setContentView(R.layout.dialog_baseline_name_v2)
+        dialog.findViewById<TextView>(R.id.nameDialogTitle).text = title
+        dialog.findViewById<TextView>(R.id.nameDialogHint).text = hint
+        dialog.findViewById<TextView>(R.id.nameDialogOk).text = okLabel
+        val input = dialog.findViewById<EditText>(R.id.nameDialogInput)
+        input.setText(initial)
+        if (initial.isNotEmpty()) input.setSelection(initial.length)
+        dialog.findViewById<View>(R.id.nameDialogCancel).setOnClickListener { dialog.dismiss() }
+        dialog.findViewById<View>(R.id.nameDialogOk).setOnClickListener {
+            val name = input.text?.toString().orEmpty()
+            dialog.dismiss()
+            onDone(name)
+        }
+        sizeDialog(dialog)
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+    }
+
+    /** The one question a destructive tap has to answer: `취소` or the red button. */
+    private fun showConfirmDialog(
+        title: String,
+        message: String,
+        okLabel: String,
+        onConfirm: () -> Unit
+    ) {
+        val dialog = Dialog(this, R.style.Theme_SignalRadar_Dialog)
+        dialog.setContentView(R.layout.dialog_baseline_confirm_v2)
+        dialog.findViewById<TextView>(R.id.confirmTitle).text = title
+        dialog.findViewById<TextView>(R.id.confirmMessage).text = message
+        dialog.findViewById<TextView>(R.id.confirmOk).text = okLabel
+        dialog.findViewById<View>(R.id.confirmCancel).setOnClickListener { dialog.dismiss() }
+        dialog.findViewById<View>(R.id.confirmOk).setOnClickListener {
+            dialog.dismiss()
+            onConfirm()
+        }
+        sizeDialog(dialog)
+    }
+
+    /** Show a v2 card dialog at the width the shared detail card uses. */
+    private fun sizeDialog(dialog: Dialog) {
+        dialog.show()
+        val metrics = resources.displayMetrics
+        val margin = (16 * metrics.density).toInt()
+        val width = (metrics.widthPixels - margin * 2)
+            .coerceAtMost((metrics.widthPixels * 0.92f).toInt())
+        dialog.window?.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+    }
+
+    /**
+     * The line under the sheet title, kept true to the 기준 in use. The shared screen writes it
+     * with the repository's own saved-at stamp, which a 기준 loaded from the list does not have;
+     * only that "지금 …" line is replaced, so a permission notice is never overwritten.
+     */
+    private fun renderStatusLine(all: List<Signal>) {
+        val active = store.active() ?: return
+        val line = findViewById<TextView>(R.id.statusDetail)
+        if (!line.text.startsWith("지금 ")) return
+        line.text = "지금 ${all.size}개 신호 · 기준 ‘${active.name}’ ${active.size}개"
+    }
+
     private fun restart(runnable: Runnable, delay: Long) {
         handler.removeCallbacks(runnable)
         handler.postDelayed(runnable, delay)
@@ -761,6 +1021,9 @@ class V2RadarActivity : SignalRadarActivity() {
     companion object {
         internal const val ADDRESS_HIDDEN = "세부 주소 보기 ▾"
         internal const val ADDRESS_SHOWN = "세부 주소 접기 ▴"
+
+        /** What the top card and the 기준 tab say while nothing is saved. */
+        internal const val NO_BASELINE = "저장된 기준 없음"
 
         private const val HEADING_MS = 250L
         private const val ORB_MS = 160L

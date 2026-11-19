@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- one saved 기준 in the 기준 tab (v2.2): two lines, so three or four of them still fit in
+     the sheet above `🧹 기준 초기화`.
+
+       우리 집                              [적용 중]
+       기기 12개 · 21:34 저장      [✏ 이름] [🗑 삭제]
+
+     Tapping the card itself switches the app to that 기준; the two small buttons stay
+     separate click targets, so a rename never accidentally changes what is being compared. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/baselineCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="6dp"
+    android:background="@drawable/bg_v2_row"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical"
+    android:paddingStart="12dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="10dp"
+    android:paddingBottom="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/baselineName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:text="기준 1"
+            android:textColor="@color/v2_ink"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/baselineActive"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_v2_step_very"
+            android:paddingStart="9dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="9dp"
+            android:paddingBottom="3dp"
+            android:text="적용 중"
+            android:textColor="@color/v2_emerald_deep"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/baselineMeta"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:text="기기 12개 · 21:34 저장"
+            android:textColor="@color/v2_ink_soft"
+            android:textSize="10.5sp" />
+
+        <TextView
+            android:id="@+id/baselineRename"
+            android:layout_width="wrap_content"
+            android:layout_height="26dp"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_v2_button_soft"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:text="✏ 이름"
+            android:textColor="@color/v2_ink_soft"
+            android:textSize="10.5sp" />
+
+        <TextView
+            android:id="@+id/baselineDelete"
+            android:layout_width="wrap_content"
+            android:layout_height="26dp"
+            android:layout_marginStart="5dp"
+            android:background="@drawable/bg_v2_button_soft"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:text="🗑 삭제"
+            android:textColor="@color/v2_red"
+            android:textSize="10.5sp" />
+    </LinearLayout>
+</LinearLayout>

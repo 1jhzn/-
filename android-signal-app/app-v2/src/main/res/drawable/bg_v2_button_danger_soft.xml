@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- `🧹 기준 초기화` on the 기준 tab: quiet red, so it reads as a risky action without
+     shouting louder than the save button above it. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/v2_red_soft" />
+    <corners android:radius="16dp" />
+    <stroke android:width="1dp" android:color="@color/v2_red_line" />
+</shape>

@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- v2.1 기준 page: save what my room normally looks like, and choose whether a new signal
-     may buzz the phone. -->
+<!-- v2.2 기준 page: save what my room normally looks like, keep more than one of them under
+     a name, choose which one the 🚨 새 신호 check uses, and throw them all away again.
+
+       [ 📌 지금 신호를 새 기준으로 저장 ]
+       저장된 기준 3개 · 적용 중 ‘복도’
+       ┌────────────────────────────────┐
+       │ 복도                     [적용 중] │   ← 탭하면 이 기준으로 바뀜
+       │ 기기 5개 · 21:34 저장  [✏ 이름] [🗑 삭제] │
+       └────────────────────────────────┘
+       …
+       [ 🧹 기준 초기화 · 저장한 기준 모두 지우기 ]
+
+     The save button and the list header are one line each so three cards and the reset button
+     all fit in the sheet; the page still scrolls when more 기준 are saved. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -13,45 +25,66 @@
         android:paddingTop="8dp"
         android:paddingBottom="4dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_v2_row"
-            android:orientation="vertical"
-            android:padding="13dp">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="지금 잡히는 신호를 ‘기준’으로 저장해 두면, 그 뒤에 처음 나타난 신호만 🚨 새 신호로 알려드려요."
-                android:textColor="@color/v2_ink_soft"
-                android:textSize="11.5sp"
-                android:lineSpacingExtra="2dp" />
-
-            <TextView
-                android:id="@+id/recordSummary"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
-                android:text="저장된 기준: 0개"
-                android:textColor="@color/v2_ink"
-                android:textSize="12.5sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
         <TextView
             android:id="@+id/btnBaseline"
             android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:layout_marginTop="10dp"
+            android:layout_height="44dp"
             android:background="@drawable/bg_v2_button_primary"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center"
-            android:text="📌 지금 신호를 기준으로 저장"
+            android:text="📌 지금 신호를 새 기준으로 저장"
             android:textColor="#FFFFFF"
             android:textSize="13sp"
             android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/recordSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:text="저장된 기준 없음"
+            android:textColor="@color/v2_ink"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <!-- one card per saved 기준, newest at the top; filled by V2RadarActivity -->
+        <LinearLayout
+            android:id="@+id/v2RecordList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="7dp"
+            android:orientation="vertical" />
+
+        <TextView
+            android:id="@+id/v2RecordEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="7dp"
+            android:background="@drawable/bg_v2_row"
+            android:lineSpacingExtra="2dp"
+            android:padding="13dp"
+            android:text="아직 저장된 기준이 없어요.\n위 버튼을 누르면 지금 잡히는 신호가 ‘기준 1’로 저장돼요."
+            android:textColor="@color/v2_ink_faint"
+            android:textSize="11.5sp" />
+
+        <TextView
+            android:id="@+id/v2RecordReset"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_v2_button_danger_soft"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:text="🧹 기준 초기화 · 저장한 기준 모두 지우기"
+            android:textColor="@color/v2_red"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
 
         <LinearLayout
             android:id="@+id/v2VibrateRow"
@@ -108,7 +141,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:lineSpacingExtra="2.5dp"
-            android:text="· 이름을 읽는 시간은 0.7초로 끊고, 읽는 중에는 ⏹ 읽기 멈추기로 바로 끝낼 수 있어요.\n· 기기 상세의 MAC 주소는 ‘세부 주소 보기’를 눌러야 보여요.\n· 거리는 신호 세기로 계산한 어림값이라 벽·사람에 따라 달라져요."
+            android:text="· 지금 잡히는 신호를 이름 붙여 저장해 두면, 그 뒤에 처음 나타난 신호만 🚨 새 신호로 알려드려요.\n· 기준 카드를 누르면 그 기준으로 바로 바뀌어요.\n· 이름을 읽는 시간은 0.7초로 끊고, 읽는 중에는 ⏹ 읽기 멈추기로 바로 끝낼 수 있어요.\n· 기기 상세의 MAC 주소는 ‘세부 주소 보기’를 눌러야 보여요.\n· 거리는 신호 세기로 계산한 어림값이라 벽·사람에 따라 달라져요."
             android:textColor="@color/v2_ink_faint"
             android:textSize="10.5sp" />
     </LinearLayout>

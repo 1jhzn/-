@@ -247,7 +247,7 @@
                     </LinearLayout>
                 </FrameLayout>
 
-                <!-- 기준: what the saved baseline holds -->
+                <!-- 기준: which named baseline is in use, and what it holds (v2.2) -->
                 <LinearLayout
                     android:id="@+id/v2RecordHero"
                     android:layout_width="match_parent"
@@ -262,23 +262,36 @@
                     android:paddingBottom="13dp"
                     android:visibility="gone">
 
+                    <!-- the name of the 기준 in use, large: 지훈 asked to see which one is on -->
+                    <TextView
+                        android:id="@+id/v2RecordName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:singleLine="true"
+                        android:text="저장된 기준 없음"
+                        android:textColor="@color/v2_ink"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+
                     <TextView
                         android:id="@+id/v2RecordCount"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="기준 0개"
-                        android:textColor="@color/v2_ink"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:layout_marginTop="3dp"
+                        android:text="아직 기준을 저장하지 않았어요"
+                        android:textColor="@color/v2_ink_soft"
+                        android:textSize="12sp" />
 
                     <TextView
                         android:id="@+id/v2RecordSavedAt"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="아직 기준을 저장하지 않았어요"
-                        android:textColor="@color/v2_ink_soft"
-                        android:textSize="11.5sp" />
+                        android:text=""
+                        android:textColor="@color/v2_ink_faint"
+                        android:textSize="10.5sp" />
                 </LinearLayout>
             </FrameLayout>
         </FrameLayout>

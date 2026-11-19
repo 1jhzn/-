@@ -143,6 +143,21 @@ class BleScanner(
             null
         }
 
+        // The advertisement can carry "how strong I am at 1 m". When it does, the distance
+        // estimate uses it instead of a generic -59 dBm guess. 127 / garbage means unknown.
+        var txPower: Int? = null
+        try {
+            val advertised = record?.txPowerLevel
+            if (advertised != null && advertised in TX_POWER_RANGE) {
+                txPower = advertised
+            } else {
+                val reported = result.txPower
+                if (reported in TX_POWER_RANGE) txPower = reported
+            }
+        } catch (e: Exception) {
+            txPower = null
+        }
+
         var companyId: Int? = null
         var companyData: ByteArray? = null
         val manufacturers = record?.manufacturerSpecificData
@@ -196,7 +211,8 @@ class BleScanner(
             address = address?.uppercase() ?: "주소 비공개",
             rssi = result.rssi,
             firstSeen = now,
-            lastSeen = now
+            lastSeen = now,
+            txPower = txPower
         )
     }
 
@@ -212,5 +228,8 @@ class BleScanner(
 
     companion object {
         private const val TAG = "BleScanner"
+
+        /** Anything outside this window is the API's "unknown" marker, not a real level. */
+        private val TX_POWER_RANGE = -100..20
     }
 }

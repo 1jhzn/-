@@ -24,6 +24,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.jihun.signalradar.direction.DirectionFinderDialog
 import com.jihun.signalradar.identify.Classifier
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
@@ -33,6 +34,7 @@ import com.jihun.signalradar.scan.WifiScanner
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
 
@@ -53,6 +55,7 @@ class MainActivity : AppCompatActivity() {
     private var lastSignature: String? = null
     private var askedPermissions = false
     private var problemText: String? = null
+    private var finderDialog: DirectionFinderDialog? = null
 
     private lateinit var statusChip: TextView
     private lateinit var statusDetail: TextView
@@ -178,6 +181,7 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
         handler.removeCallbacks(ticker)
         handler.removeCallbacks(cellPoller)
+        finderDialog?.dismiss()
         ble.stop()
         wifi.stop()
     }
@@ -270,7 +274,12 @@ class MainActivity : AppCompatActivity() {
     private fun describeNew(newOnes: List<Signal>): String {
         val parts = ArrayList<String>(3)
         for (signal in newOnes.take(3)) {
-            val where = Classifier.distanceLabel(signal.rssi, signal.source)
+            val where = Classifier.distanceLabel(
+                signal.smoothedRssi ?: signal.rssi.toFloat(),
+                signal.source,
+                signal.txPower,
+                signal.frequencyMhz
+            )
             val name = signal.vendor ?: signal.title
             parts.add(if (where != null) "$name · $where" else name)
         }
@@ -447,9 +456,19 @@ class MainActivity : AppCompatActivity() {
             append("종류: ").append(signal.source.label).append('\n')
             signal.vendor?.let { append("제조사: ").append(it).append('\n') }
             signal.kind?.let { append("추정: ").append(it).append('\n') }
-            append("신호 세기: ").append(signal.rssi).append(" dBm\n")
-            Classifier.distanceLabel(signal.rssi, signal.source)?.let {
-                append("대략 거리: ").append(it).append('\n')
+            val level = signal.smoothedRssi?.roundToInt() ?: signal.rssi
+            append("신호 세기: ").append(level).append(" dBm")
+            if (level != signal.rssi) append(" (순간 ").append(signal.rssi).append(" dBm)")
+            append('\n')
+            signal.txPower?.let { append("송신 세기(1m 기준): ").append(it).append(" dBm\n") }
+            Classifier.distanceLabel(
+                signal.smoothedRssi ?: signal.rssi.toFloat(),
+                signal.source,
+                signal.txPower,
+                signal.frequencyMhz
+            )?.let {
+                append("대략 거리: ").append(it)
+                    .append(" (신호 세기로 계산한 어림값 · 벽이나 사람에 따라 달라져요)\n")
             }
             append("주소: ").append(signal.address).append('\n')
             append("처음 잡힘: ").append(timeText(signal.firstSeen)).append('\n')
@@ -462,7 +481,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        AlertDialog.Builder(this)
+        val builder = AlertDialog.Builder(this)
             .setTitle(signal.title)
             .setMessage(body)
             .setPositiveButton("이 신호는 무시") { _, _ ->
@@ -473,7 +492,35 @@ class MainActivity : AppCompatActivity() {
                 refresh()
             }
             .setNegativeButton("닫기", null)
-            .show()
+
+        // Base stations have no meaningful direction from a single phone, so the
+        // compass finder is only offered for bluetooth and Wi-Fi.
+        if (signal.source != SignalSource.CELL) {
+            builder.setNeutralButton("🧭 방향 찾기") { _, _ -> openDirectionFinder(signal) }
+        }
+        builder.show()
+    }
+
+    private fun openDirectionFinder(signal: Signal) {
+        if (!scanning) {
+            startScanning()
+            if (!scanning) {
+                toast("방향을 재려면 주변 신호를 먼저 읽어야 해요. 권한을 허용해 주세요.")
+                return
+            }
+        }
+        val dialog = DirectionFinderDialog(
+            this,
+            signal,
+            { repo.find(signal.id) },
+            { wifi.requestImmediateScan() }
+        )
+        dialog.setOnDismissListener {
+            if (finderDialog === dialog) finderDialog = null
+        }
+        finderDialog?.dismiss()
+        finderDialog = dialog
+        dialog.show()
     }
 
     // ------------------------------------------------------------- permissions

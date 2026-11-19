@@ -6,6 +6,7 @@ import android.util.Log
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
 import org.json.JSONObject
+import kotlin.math.roundToInt
 
 /**
  * Keeps the live picture of everything the phone hears right now, and the saved
@@ -18,6 +19,9 @@ class SignalRepository(context: Context) {
 
     private val live = HashMap<String, Signal>()
     private val baseline = HashMap<String, Int>()
+
+    /** Smoothed level per signal id, so a distance never jumps on one noisy packet. */
+    private val smoothed = HashMap<String, Float>()
     private val lock = Any()
 
     private var baselineSavedAt = 0L
@@ -38,6 +42,7 @@ class SignalRepository(context: Context) {
         synchronized(lock) {
             for (signal in signals) {
                 val previous = live[signal.id]
+                smoothed[signal.id] = smoothLevel(signal.id, signal.rssi)
                 live[signal.id] = if (previous == null) {
                     signal.copy(firstSeen = signal.lastSeen)
                 } else {
@@ -45,6 +50,22 @@ class SignalRepository(context: Context) {
                 }
             }
         }
+    }
+
+    /**
+     * Exponential moving average over the levels heard from one device.
+     * A single wild packet is capped before it is mixed in, otherwise one bad reading
+     * would still drag the average (and the distance) with it.
+     */
+    private fun smoothLevel(id: String, rssi: Int): Float {
+        val previous = smoothed[id] ?: return rssi.toFloat()
+        val delta = (rssi - previous).coerceIn(-OUTLIER_DB, OUTLIER_DB)
+        return previous + EMA_ALPHA * delta
+    }
+
+    /** One signal by id, with the level it was last heard at. */
+    fun find(id: String): Signal? = synchronized(lock) {
+        live[id]?.let { withSmoothed(it) }
     }
 
     /** Drop signals that stopped being heard. */
@@ -59,7 +80,10 @@ class SignalRepository(context: Context) {
                     SignalSource.WIFI -> 120_000L
                     SignalSource.CELL -> 120_000L
                 }
-                if (now - signal.lastSeen > limit) iterator.remove()
+                if (now - signal.lastSeen > limit) {
+                    iterator.remove()
+                    smoothed.remove(signal.id)
+                }
             }
         }
     }
@@ -73,7 +97,7 @@ class SignalRepository(context: Context) {
         val baselineReady = baseline.isNotEmpty()
         live.values.map { signal ->
             val base = baseline[signal.id]
-            signal.copy(
+            withSmoothed(signal).copy(
                 isNew = baselineReady && base == null && signal.source != SignalSource.CELL,
                 isBoosted = base != null && signal.rssi - base >= BOOST_DB,
                 baselineRssi = base
@@ -81,19 +105,23 @@ class SignalRepository(context: Context) {
         }
     }
 
+    private fun withSmoothed(signal: Signal): Signal =
+        signal.copy(smoothedRssi = smoothed[signal.id] ?: signal.rssi.toFloat())
+
     /** Store every bluetooth / Wi-Fi signal currently heard as the new baseline. */
     fun saveBaseline(): Int = synchronized(lock) {
         val json = JSONObject()
         var count = 0
         for (signal in live.values) {
             if (signal.source == SignalSource.CELL) continue
-            json.put(signal.id, signal.rssi)
+            val level = smoothed[signal.id]?.roundToInt() ?: signal.rssi
+            json.put(signal.id, level)
             count++
         }
         baseline.clear()
         for (signal in live.values) {
             if (signal.source == SignalSource.CELL) continue
-            baseline[signal.id] = signal.rssi
+            baseline[signal.id] = smoothed[signal.id]?.roundToInt() ?: signal.rssi
         }
         baselineSavedAt = System.currentTimeMillis()
         try {
@@ -153,5 +181,11 @@ class SignalRepository(context: Context) {
 
         /** A signal that got this much stronger than in the baseline is worth a flag. */
         private const val BOOST_DB = 12
+
+        /** Weight of each new reading in the smoothed level. */
+        private const val EMA_ALPHA = 0.28f
+
+        /** A jump bigger than this in one step is most likely a bad packet. */
+        private const val OUTLIER_DB = 12f
     }
 }

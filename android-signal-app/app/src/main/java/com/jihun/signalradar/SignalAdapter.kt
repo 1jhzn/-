@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.jihun.signalradar.identify.Classifier
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
+import kotlin.math.roundToInt
 
 class SignalAdapter(
     private val onClick: (Signal) -> Unit
@@ -97,13 +98,16 @@ class SignalAdapter(
             badgeNew.visibility = if (signal.isNew) View.VISIBLE else View.GONE
             badgeBoost.visibility = if (signal.isBoosted) View.VISIBLE else View.GONE
 
-            val percent = Classifier.strengthPercent(signal.rssi, signal.source)
+            // Everything visible uses the smoothed level: a distance that jumps 3 m because
+            // one packet was weak is worse than no distance at all.
+            val level = signal.smoothedRssi?.roundToInt() ?: signal.rssi
+            val percent = Classifier.strengthPercent(level, signal.source)
             val strengthColor = when {
                 percent >= 65 -> R.color.green
                 percent >= 35 -> R.color.amber
                 else -> R.color.red
             }
-            rssi.text = signal.rssi.toString()
+            rssi.text = level.toString()
             rssi.setTextColor(ContextCompat.getColor(context, strengthColor))
 
             val trackWidth = context.resources.displayMetrics.density * 46f
@@ -117,7 +121,20 @@ class SignalAdapter(
                 ContextCompat.getColor(context, strengthColor)
             )
 
-            distance.text = Classifier.distanceLabel(signal.rssi, signal.source) ?: "기지국"
+            val distanceLabel = Classifier.distanceLabel(
+                signal.smoothedRssi ?: signal.rssi.toFloat(),
+                signal.source,
+                signal.txPower,
+                signal.frequencyMhz
+            )
+            if (distanceLabel != null) {
+                distance.text = distanceLabel
+                distance.setTextColor(ContextCompat.getColor(context, strengthColor))
+            } else {
+                // A cell's signal level says nothing about its distance.
+                distance.text = "기지국"
+                distance.setTextColor(ContextCompat.getColor(context, R.color.purple))
+            }
         }
 
         private fun unknownVendor(signal: Signal): String {

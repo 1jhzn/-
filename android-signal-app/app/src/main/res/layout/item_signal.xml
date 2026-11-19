@@ -116,32 +116,56 @@
     </LinearLayout>
 
     <LinearLayout
-        android:layout_width="58dp"
-        android:layout_height="match_parent"
-        android:layout_marginStart="6dp"
+        android:layout_width="70dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginStart="4dp"
         android:gravity="center_horizontal"
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/itemRssi"
+            android:id="@+id/itemDistance"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="-70"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="약 3m"
             android:textColor="@color/accent"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:textStyle="bold" />
 
-        <TextView
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="dBm"
-            android:textColor="@color/text_muted"
-            android:textSize="9sp" />
+            android:layout_marginTop="1dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/itemRssi"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="-70"
+                android:textColor="@color/accent"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="2dp"
+                android:includeFontPadding="false"
+                android:text="dBm"
+                android:textColor="@color/text_muted"
+                android:textSize="9sp" />
+        </LinearLayout>
 
         <FrameLayout
             android:layout_width="46dp"
             android:layout_height="4dp"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="5dp"
             android:background="@drawable/bg_track">
 
             <View
@@ -150,15 +174,6 @@
                 android:layout_height="4dp"
                 android:background="@drawable/bg_fill" />
         </FrameLayout>
-
-        <TextView
-            android:id="@+id/itemDistance"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:text="약 3m"
-            android:textColor="@color/text_secondary"
-            android:textSize="10sp" />
     </LinearLayout>
 
 </LinearLayout>

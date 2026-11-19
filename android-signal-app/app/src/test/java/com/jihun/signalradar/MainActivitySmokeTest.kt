@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.test.core.app.ApplicationProvider
 import com.jihun.signalradar.identify.Classifier
 import com.jihun.signalradar.identify.VendorDb
+import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -56,5 +57,55 @@ class MainActivitySmokeTest {
         assertTrue("near=$near far=$far", near < far)
         assertEquals("약 1m", Classifier.distanceLabel(-59, SignalSource.BLE))
         assertNull(Classifier.distanceLabel(-70, SignalSource.CELL))
+    }
+
+    @Test
+    fun distance_labels_read_like_a_person_would_say_them() {
+        // BLE: reference -59 dBm at 1 m, exponent 2.
+        assertEquals("50cm 이내", Classifier.distanceLabel(-40, SignalSource.BLE))
+        assertEquals("약 0.6m", Classifier.distanceLabel(-55, SignalSource.BLE))
+        assertEquals("약 3.5m", Classifier.distanceLabel(-70, SignalSource.BLE))
+        assertEquals("약 35m", Classifier.distanceLabel(-90, SignalSource.BLE))
+
+        // The advertisement's own 1 m reference beats the default guess.
+        assertEquals(
+            "약 0.8m",
+            Classifier.distanceLabel(-48, SignalSource.BLE, txPower = -50)
+        )
+
+        // Wi-Fi: each band starts from a different level at 1 m, indoor exponent 2.6.
+        assertEquals("약 14m", Classifier.distanceLabel(-70, SignalSource.WIFI, frequencyMhz = 2437))
+        assertEquals("약 8.4m", Classifier.distanceLabel(-70, SignalSource.WIFI, frequencyMhz = 5180))
+        assertEquals("약 6.4m", Classifier.distanceLabel(-70, SignalSource.WIFI, frequencyMhz = 6135))
+    }
+
+    @Test
+    fun repository_smooths_the_level_before_a_distance_is_shown() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val repo = SignalRepository(context)
+        var now = 0L
+        for (rssi in listOf(-60, -48, -66, -52, -64, -50, -62)) {
+            now += 1_000
+            repo.upsert(
+                listOf(
+                    Signal(
+                        id = "ble:test",
+                        source = SignalSource.BLE,
+                        title = "테스트",
+                        vendor = null,
+                        kind = null,
+                        detail = null,
+                        address = "AA:BB",
+                        rssi = rssi,
+                        firstSeen = now,
+                        lastSeen = now
+                    )
+                )
+            )
+        }
+        val smoothed = repo.snapshot().first().smoothedRssi ?: 0f
+        // Raw readings swung 18 dB; the smoothed one must stay near the middle of that band.
+        assertTrue("smoothed=$smoothed", smoothed in -64f..-52f)
+        assertEquals(smoothed, repo.find("ble:test")?.smoothedRssi ?: -1f, 0.01f)
     }
 }

@@ -13,8 +13,8 @@ android {
         applicationId = "com.jihun.signalradar"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
     }
 
     buildTypes {
@@ -52,6 +52,10 @@ android {
                 fallback.mkdirs()
                 test.systemProperty("user.home", fallback.absolutePath)
             }
+            // The system /tmp is a small tmpfs here; the graphics runtime unpacks fonts.
+            val tmp = layout.buildDirectory.dir("tmp/test-tmp").get().asFile
+            tmp.mkdirs()
+            test.systemProperty("java.io.tmpdir", tmp.absolutePath)
         }
      }
 }

@@ -2,6 +2,7 @@ package com.jihun.signalradar.identify
 
 import com.jihun.signalradar.model.SignalSource
 import kotlin.math.pow
+import kotlin.math.roundToInt
 
 /**
  * Turns raw radio data into something a person can read: what the device probably is,
@@ -167,30 +168,74 @@ object Classifier {
     // ------------------------------------------------------- Strength / range
 
     /**
-     * Rough distance in metres from an RSSI reading, using the standard log-distance
-     * path loss model. Phone antennas and walls make this an estimate, not a measurement.
+     * Rough distance in metres from an RSSI reading, using the log-distance path loss model.
+     *
+     * Bluetooth: the advertisement often carries the transmitter's own "how strong am I at
+     * 1 m" value; when it does, that is far better than a generic guess, so it wins.
+     * Wi-Fi: each band starts from a different level at 1 m and 5/6 GHz loses more on the way,
+     * and indoors walls eat signal fast — n = 2.6 keeps "next room" from reading as 40 m.
+     * Phone antennas and walls still make this an estimate, not a measurement.
      */
-    fun distanceMeters(rssi: Int, source: SignalSource): Double? {
+    fun distanceMeters(rssi: Int, source: SignalSource): Double? =
+        distanceMeters(rssi.toDouble(), source, null, null)
+
+    fun distanceMeters(
+        rssi: Double,
+        source: SignalSource,
+        txPower: Int? = null,
+        frequencyMhz: Int? = null
+    ): Double? {
         val (reference, exponent) = when (source) {
-            SignalSource.BLE -> -59 to 2.0
-            SignalSource.WIFI -> -42 to 2.4
+            SignalSource.BLE ->
+                (txPower?.takeIf { it in TX_POWER_MIN..TX_POWER_MAX }?.toDouble() ?: BLE_REF_1M) to
+                    BLE_EXPONENT
+            SignalSource.WIFI -> wifiReference(frequencyMhz) to WIFI_EXPONENT
             SignalSource.CELL -> return null
         }
-        return 10.0.pow((reference - rssi) / (10.0 * exponent))
+        val metres = 10.0.pow((reference - rssi) / (10.0 * exponent))
+        return metres.coerceIn(0.02, 500.0)
     }
 
-    fun distanceLabel(rssi: Int, source: SignalSource): String? {
-        val d = distanceMeters(rssi, source) ?: return null
+    /** Level a Wi-Fi router of this band should produce at 1 m. */
+    private fun wifiReference(frequencyMhz: Int?): Double = when {
+        frequencyMhz == null -> -43.0
+        frequencyMhz in 2400..2500 -> -40.0
+        frequencyMhz in 4900..5930 -> -46.0
+        frequencyMhz > 5930 -> -49.0
+        else -> -43.0
+    }
+
+    /**
+     * Short label for the list row: under a metre to a tenth, one decimal up to 10 m,
+     * whole metres beyond that, and a blunt "60m+" when the guess stops being useful.
+     * Cells return null (a base station's level says nothing about its distance).
+     */
+    fun distanceLabel(
+        rssi: Int,
+        source: SignalSource,
+        txPower: Int? = null,
+        frequencyMhz: Int? = null
+    ): String? = distanceLabel(rssi.toFloat(), source, txPower, frequencyMhz)
+
+    fun distanceLabel(
+        rssi: Float,
+        source: SignalSource,
+        txPower: Int? = null,
+        frequencyMhz: Int? = null
+    ): String? {
+        val metres = distanceMeters(rssi.toDouble(), source, txPower, frequencyMhz) ?: return null
         return when {
-            d < 0.6 -> "50cm 이내"
-            d < 1.5 -> "약 1m"
-            d < 3.5 -> "약 2~3m"
-            d < 7.0 -> "약 5m"
-            d < 13.0 -> "약 10m"
-            d < 22.0 -> "약 15m"
-            d < 40.0 -> "약 30m"
-            else -> "30m 이상"
+            metres < 0.5 -> "50cm 이내"
+            metres < 10.0 -> "약 ${oneDecimal(metres)}m"
+            metres < 60.0 -> "약 ${metres.roundToInt()}m"
+            else -> "60m+"
         }
+    }
+
+    /** 0.42 -> "0.4", 2.44 -> "2.4", 3.0 -> "3". */
+    private fun oneDecimal(value: Double): String {
+        val tenths = (value * 10).roundToInt()
+        return if (tenths % 10 == 0) "${tenths / 10}" else "${tenths / 10}.${tenths % 10}"
     }
 
     /** 0..100 for the little strength bar. */
@@ -203,4 +248,10 @@ object Classifier {
         val ratio = (rssi - weak).toFloat() / (strong - weak).toFloat()
         return (ratio.coerceIn(0f, 1f) * 100f).toInt()
     }
+
+    private const val BLE_REF_1M = -59.0
+    private const val BLE_EXPONENT = 2.0
+    private const val WIFI_EXPONENT = 2.6
+    private const val TX_POWER_MIN = -100
+    private const val TX_POWER_MAX = 20
 }

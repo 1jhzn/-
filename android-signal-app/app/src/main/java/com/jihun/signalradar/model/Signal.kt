@@ -26,5 +26,11 @@ data class Signal(
     val lastSeen: Long,
     val isNew: Boolean = false,
     val isBoosted: Boolean = false,
-    val baselineRssi: Int? = null
+    val baselineRssi: Int? = null,
+    /** Level after the smoothing filter; what distance and the strength bar read from. */
+    val smoothedRssi: Float? = null,
+    /** Bluetooth transmitters advertise "how strong I am at 1 m" — far better than a guess. */
+    val txPower: Int? = null,
+    /** Wi-Fi channel frequency, so 5/6 GHz is not compared against 2.4 GHz levels. */
+    val frequencyMhz: Int? = null
 )

@@ -129,6 +129,25 @@ class WifiScanner(
         }
     }
 
+    /**
+     * Ask the system for a fresh Wi-Fi scan right now. Used while direction finding, where
+     * the newest level matters most; Android still throttles this to roughly four scans per
+     * two minutes for foreground apps, so a false result is normal and not an error.
+     */
+    fun requestImmediateScan(): Boolean {
+        val manager = wifi ?: return false
+        if (!hasScanPermission()) return false
+        lastRequest = System.currentTimeMillis()
+        return try {
+            manager.startScan()
+        } catch (e: SecurityException) {
+            false
+        } catch (e: Exception) {
+            Log.w(TAG, "startScan failed", e)
+            false
+        }
+    }
+
     /** Android throttles scan requests; asking more often than every ~15 s is pointless. */
     private fun requestScanIfDue() {
         val manager = wifi ?: return
@@ -215,7 +234,8 @@ class WifiScanner(
             address = bssid.uppercase(),
             rssi = result.level,
             firstSeen = now,
-            lastSeen = now
+            lastSeen = now,
+            frequencyMhz = result.frequency
         )
     }
 

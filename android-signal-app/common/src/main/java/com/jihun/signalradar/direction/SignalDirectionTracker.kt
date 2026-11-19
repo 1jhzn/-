@@ -38,6 +38,9 @@ class SignalDirectionTracker(
 
     /** Per-sector level: an average over the readings heard while pointing that way. */
     private val sectorLevel = FloatArray(SECTORS) { NO_VALUE }
+
+    /** Highest single reading heard in each sector, for the "최고 -xx dBm" line only. */
+    private val sectorMax = FloatArray(SECTORS) { NO_VALUE }
     private val sectorCos = DoubleArray(SECTORS)
     private val sectorSin = DoubleArray(SECTORS)
     private val sectorWeight = DoubleArray(SECTORS)
@@ -79,6 +82,7 @@ class SignalDirectionTracker(
         history.clear()
         for (i in 0 until SECTORS) {
             sectorLevel[i] = NO_VALUE
+            sectorMax[i] = NO_VALUE
             sectorCos[i] = 0.0
             sectorSin[i] = 0.0
             sectorWeight[i] = 0.0
@@ -131,6 +135,7 @@ class SignalDirectionTracker(
             } else {
                 value
             }
+            if (value > sectorMax[index]) sectorMax[index] = value
             refreshPeak()
         } else if (peakRssi == null || value > (peakRssi ?: NO_VALUE)) {
             // No compass: still report the strongest level, just without a direction.
@@ -187,7 +192,9 @@ class SignalDirectionTracker(
         if (currentScore == null || bestScore >= currentScore + PEAK_HYSTERESIS_DB) {
             bestSector = candidate
         }
-        peakRssi = sectorValue(bestSector)
+        // The direction is chosen from the smoothed sectors, but "최고" on screen means the
+        // loudest level actually heard that way, so it may be higher than the average.
+        peakRssi = sectorMax[bestSector].takeIf { it > NO_VALUE } ?: sectorValue(bestSector)
         peakAzimuth = refinedAzimuth(bestSector)
     }
 

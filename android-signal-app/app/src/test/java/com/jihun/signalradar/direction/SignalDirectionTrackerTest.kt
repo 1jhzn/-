@@ -189,13 +189,19 @@ class SignalDirectionTrackerTest {
         val tracker = SignalDirectionTracker()
         val feed = Feed(tracker)
         val sector = SignalDirectionTracker.sectorOf(90f)
-        repeat(6) { feed.sample(-80, 90f) }
+        // A quiet sweep round the circle first, so a bearing is allowed at all.
+        feed.sample(-80, 0f, 6)
+        feed.sample(-80, 90f, 6)
+        feed.sample(-80, 180f, 6)
+        feed.sample(-80, 270f, 6)
         val quiet = tracker.sectorValue(sector) ?: 0f
         assertEquals(-80f, quiet, 0.5f)
 
         feed.sample(-40, 90f)
         val afterOne = tracker.sectorValue(sector) ?: 0f
         assertTrue("quiet=$quiet afterOne=$afterOne", afterOne < -70f)
+        // The "최고" line still reports the loudest level actually heard in that direction.
+        assertTrue("peak=${tracker.peakRssi}", (tracker.peakRssi ?: -100f) > afterOne + 5f)
 
         // A signal that really is that strong keeps pulling the average up.
         repeat(12) { feed.sample(-50, 90f) }

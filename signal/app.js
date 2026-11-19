@@ -648,6 +648,9 @@ function renderStatus() {
   }
   var bn = Object.keys(state.baseline).length;
   chips.push('<span class="chip ' + (bn ? '' : 'warn') + '">기준 ' + bn + '개</span>');
+  if (support && (!bt || typeof bt.requestLEScan !== 'function')) {
+    chips.push('<span class="chip warn">⚙️ 전체 스캔 설정 필요</span>');
+  }
   var nn = 0;
   state.devices.forEach(function (r) { if (r.isNew) nn++; });
   if (nn) chips.push('<span class="chip bad">🚨 새 신호 ' + nn + '</span>');
@@ -670,8 +673,8 @@ function renderStatus() {
   if (!hint) return;
   var bn2 = Object.keys(state.baseline).length;
   if (!state.devices.size) {
-    hint.className = 'hint show warn';
-    hint.innerHTML = '📡 <b>스캔 시작</b>을 누르면 주변 블루투스 신호를 모으기 시작해요. 기준을 저장해 두면 새로 나타난 신호를 알려 드려요.';
+    hint.className = 'hint';
+    hint.innerHTML = '';
   } else if (!bn2) {
     hint.className = 'hint';
     hint.innerHTML = '① 지금 잡힌 신호 ' + state.devices.size + '개를 <b>현재 신호를 기준으로 저장</b> → ② 그 뒤 처음 나타나는 신호를 바로 알려 드려요.';
@@ -1520,7 +1523,7 @@ function init() {
       }).catch(function () {});
     }
     if (typeof bt.requestLEScan !== 'function') {
-      $('#guideFlags').open = true;
+      // 전체 스캔을 쓰려면 설정이 필요하다는 것만 칩으로 알리고, 안내 카드는 스캔 시도 때 펼친다
     }
   }
 

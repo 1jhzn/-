@@ -1041,10 +1041,10 @@ function setScanUi() {
 /* ---------------- 기준 저장 ---------------- */
 function saveBaseline() {
   var base = {};
-  var n = 0;
+  var n = 0, t = 0;
   state.devices.forEach(function (r) {
-    if (r.test) return;
-    base[r.key] = { name: r.name, sig: r.sig, rssi: r.rssiSmooth, cat: analyze(r).cat, ts: Date.now() };
+    if (r.test) t++;
+    base[r.key] = { name: r.name, sig: r.sig, rssi: r.rssiSmooth, cat: analyze(r).cat, ts: Date.now(), test: !!r.test };
     n++;
   });
   if (!n) { toast('기준으로 저장할 신호가 없어요. 먼저 스캔해 주세요'); return; }
@@ -1052,10 +1052,10 @@ function saveBaseline() {
   state.baselineAt = Date.now();
   storeSet(LS_BASE, { at: state.baselineAt, map: base });
   state.devices.forEach(function (r) {
-    r.isNew = false; r.jump = 0; r.fromBase = !r.test; r.bySig = false;
+    r.isNew = false; r.jump = 0; r.fromBase = true; r.bySig = false;
   });
   hideBanner();
-  toast('현재 신호 ' + n + '개를 기준으로 저장했어요');
+  toast('현재 신호 ' + n + '개를 기준으로 저장했어요' + (t ? ' (테스트 ' + t + '개 포함)' : ''));
   renderNow();
 }
 
@@ -1084,8 +1084,20 @@ var TEST_POOL = [
 
 function spawnTest() {
   var pool = TEST_POOL.slice();
-  var t = Date.now();
-  // 아직 없는 신호를 우선 고른다
+  // 가끔은 이미 있는 테스트 기기의 세기가 바뀐 상황을 만들어 '세기 변화' 알림을 보여 준다
+  var named = [];
+  state.devices.forEach(function (r) { if (r.test && r.name && r.name.charAt(0) !== '(') named.push(r); });
+  if (named.length && Object.keys(state.baseline).length && Math.random() < 0.4) {
+    var tg = named[Math.floor(Math.random() * named.length)];
+    var nextRssi = (tg.rssiSmooth == null ? -60 : tg.rssiSmooth) + (Math.random() < 0.5 ? -23 : 23);
+    ingest({
+      id: tg.id, name: tg.name, rssi: nextRssi, txPower: tg.txPower,
+      uuids: tg.uuids, bytes: tg.bytes, serviceData: tg.serviceData, device: null, test: true
+    });
+    toast('테스트: "' + tg.name + '"의 신호 세기가 바뀐 상황이에요');
+    if ($('#tab-scan').hidden) switchTab('scan');
+    return;
+  }
   for (var i = pool.length - 1; i > 0; i--) {
     var j = Math.floor(Math.random() * (i + 1));
     var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;

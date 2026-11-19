@@ -391,8 +391,8 @@ function classify(rec) {
   var kind = best ? best.kind : '기기 종류를 알 수 없음';
   var ico = best ? best.ico : (CAT[cat] ? CAT[cat].ico : '❓');
 
-  if (dec.appleType && cdat && cdat.n === 'Apple') {
-    kind = kind.indexOf('애플') === 0 || cat === 'audio' || cat === 'tag' ? kind : ('애플 기기 · ' + dec.appleType);
+  if (dec.appleType && cdat && cdat.n === 'Apple' && cat !== 'audio' && cat !== 'tag' && kind.indexOf('애플') !== 0) {
+    kind = '애플 · ' + kind;
   }
 
   var cls = {
@@ -563,7 +563,7 @@ function addAlert(type, rec, diff) {
   } else {
     title = '익숙한 신호의 세기가 변했어요';
     body = '<b>' + esc(rec.name || a.kind) + '</b> — 기준보다 ' +
-           (diff > 0 ? '<b>' + diff + 'dBm 더 세짐</b>(가까워짐)' : '<b>' + Math.abs(diff) + 'dBm 약해짐</b>(멀어짐)') +
+           (diff > 0 ? '<b>' + diff + 'dBm 더 세짐</b> (가까워짐)' : '<b>' + Math.abs(diff) + 'dBm 약해짐</b> (멀어짐)') +
            '<br>' + esc(a.kind) + ' · 지금 ' + esc(dTxt);
   }
   var entry = {
@@ -1511,7 +1511,13 @@ function init() {
   var s = storeGet(LS_SET, null);
   if (s) { for (var k in s) if (k in state.settings) state.settings[k] = s[k]; }
   var b = storeGet(LS_BASE, null);
-  if (b && b.map) { state.baseline = b.map; state.baselineAt = b.at || 0; }
+  if (b && b.map) {
+    // 테스트 신호로 저장한 기준은 새로 열 때는 버린다 (실제 기기와 절대 맞지 않으므로)
+    var kept = {};
+    Object.keys(b.map).forEach(function (k) { if (!b.map[k].test) kept[k] = b.map[k]; });
+    state.baseline = kept;
+    state.baselineAt = b.at || 0;
+  }
   var lg = storeGet(LS_LOG, []);
   if (Array.isArray(lg)) state.alerts = lg.slice(0, 40);
 

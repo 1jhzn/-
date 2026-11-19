@@ -37,7 +37,14 @@ class DirectionFinderDialog(
      * Told the bearing the moment a peak is found (null when the sweep is reset).
      * The 10 m radar uses it to place this device at the direction that was measured.
      */
-    private val onBearingMeasured: (Float?) -> Unit = {}
+    private val onBearingMeasured: (Float?) -> Unit = {},
+    /**
+     * How the estimate under the dial is written. The v1 screens read metres ("약 2.5m");
+     * the v2 screens read a step ("가까움"), the same wording as their list and detail card.
+     */
+    private val distanceText: (Signal, Float) -> String? = { s, rssi ->
+        Classifier.distanceLabel(rssi, s.source, s.txPower, s.frequencyMhz)
+    }
 ) : Dialog(context, R.style.Theme_SignalRadar_Dialog) {
 
     private val tracker = SignalDirectionTracker()
@@ -257,9 +264,7 @@ class DirectionFinderDialog(
             append(" dBm")
         }
 
-        distance.text = smoothed?.let {
-            Classifier.distanceLabel(it, signal.source, signal.txPower, signal.frequencyMhz)
-        } ?: "거리 계산 중"
+        distance.text = smoothed?.let { distanceText(signal, it) } ?: "거리 계산 중"
 
         renderTrend()
         renderPhone(heading, hasCompass)

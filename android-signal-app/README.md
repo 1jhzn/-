@@ -7,9 +7,46 @@
 - 읽은 신호는 폰 밖으로 보내지 않습니다. 인터넷 권한 자체를 쓰지 않습니다.
 - 기준 저장(`기준 저장`)을 한 번 눌러 두면, 그다음부터 **처음 잡히는 신호**와 **세기가 확 오른 신호**만 따로 표시합니다.
 
-이 폴더는 **앱 두 개**를 만듭니다. 하나는 원래의 `전파 감지기`(`com.jihun.signalradar`),
-다른 하나는 `전파 감지기 (내 주변)`(`com.jihun.signalradar.nearby`)입니다. 패키지가 달라서
-**지웠다 다시 깔 필요 없이 나란히 설치**됩니다.
+이 폴더는 **앱 세 개**를 만듭니다. 원래의 `전파 감지기`(`com.jihun.signalradar`),
+`전파 감지기 (내 주변)`(`com.jihun.signalradar.nearby`), 그리고 2026-11-20에 추가한
+`전파 감지기 v2`(`com.jihun.signalradar.v2`)입니다. 패키지가 달라서 **지웠다 다시 깔 필요 없이
+나란히 설치**됩니다. v2는 기존 앱을 덮어쓰는 업데이트가 아니라 **새 파일로 따로 설치되는 앱**입니다.
+
+## 전파 감지기 v2 (2026-11-20) — 새로 설치되는 별도 APK
+
+지훈 님의 1~3순위 UI 개편 요청을 **기존 앱을 건드리지 않고** 새 앱으로 만들었습니다
+(`:app-v2`, `com.jihun.signalradar.v2`, versionCode 1 · versionName "2.0", 이름 `전파 감지기 v2`).
+`거리` 탭과 `내 주변` 10m 레이더 탭을 **한 앱에** 모두 넣었습니다.
+
+### 1순위 — 빈 화면 문구 위치, `스캔 중지`
+- 대기/빈 화면 안내 문구를 화면 가운데·아래가 아니라 **목록 영역 맨 위**(`gravity=top`, 위 여백 26dp)에
+  배치했습니다(`content_v2.xml`, `page_v2.xml`). 스캔 중에는 문구도
+  `스캔 중이에요 · 조금 기다리면 주변 신호가 여기에 나타나요`로 바뀌어, 이미 눌러 둔 버튼을 다시 누르라고
+  하지 않습니다.
+- 스캔 버튼은 스캔 중이면 **`■  스캔 중지`**, 멈춰 있으면 **`▶  스캔 시작`**입니다. `거리` 탭 버튼과
+  `내 주변` 탭의 작은 버튼 두 곳 모두 같습니다(테스트로 고정).
+
+### 2순위 — 필터 칩 잘림, 카드 한 줄
+- 필터 칩을 **두 줄**(`전체 · 🚨 새 신호 · 블루투스` / `와이파이 · 기지국`)로 나눴습니다. 360dp는 물론
+  320dp 폭에서도 어떤 칩 글자도 잘리지 않고, 가로 스크롤도 필요 없습니다(`chipRowTop`, `chipRowBottom`).
+- 카드는 **제목 1줄(`maxLines=1`, `ellipsize=end`)** + **요약 한 줄**(`블루투스 · 애플`,
+  `와이파이 · ipTIME(EFM)`)만 남겼습니다. 제조사·종류·주소를 겹쳐 보여 주던 줄과 방송명 줄, MAC 주소
+  줄은 카드에서 없앴습니다(`item_signal_v2.xml`, `SignalAdapter.RowStyle.SUMMARY`).
+
+### 3순위 — 거리 단계, MAC 접기
+- `약 1.7m` 같은 소수점 대신 **`매우 가까움`(<1m) · `가까움`(<3m) · `보통`(<8m) · `멀어요`(<20m) ·
+  `아주 멀어요`** 다섯 단계로 표시합니다(`Classifier.distanceStepLabel`). 목록·상세 카드·방향 찾기
+  다이얼·새 신호 배너가 모두 같은 단계를 씁니다. v1 앱의 `약 2.5m` 표기는 그대로 둡니다.
+- 상세 카드에서는 MAC 주소를 본문에서 빼고 **`세부 주소 보기 ▾`** 토글 뒤로 접어 두었습니다. 누르면
+  `F8:1E:DF:12:34:56`이 보이고 토글은 `세부 주소 접기 ▴`로 바뀝니다.
+- `내 주변` 레이더의 **2m · 5m · 10m 눈금은 그대로**입니다(레이더 반경 기준).
+
+### 빌드와 설치
+```bash
+./gradlew :app-v2:assembleDebug   # → app-v2/build/outputs/apk/debug/app-v2-debug.apk
+./gradlew :app-v2:testDebugUnitTest :app-v2:lintDebug
+```
+`https://1jhzn.github.io/-/signal/signal-detector-v2.apk` 에서 바로 받을 수 있습니다.
 
 ## 전파 감지기 v1.6 · 내 주변 앱 v1.4 (2026-11-19)
 
@@ -170,8 +207,9 @@
 cd android-signal-app
 ./gradlew :app:assembleDebug            # 전파 감지기        → app/build/outputs/apk/debug/app-debug.apk
 ./gradlew :app-nearby:assembleDebug     # 전파 감지기 (내 주변) → app-nearby/build/outputs/apk/debug/app-nearby-debug.apk
-./gradlew assembleDebug                 # 둘 다
-./gradlew testDebugUnitTest             # 두 앱의 테스트(화면 실행·거리 계산·레이더 계산)
+./gradlew :app-v2:assembleDebug         # 전파 감지기 v2      → app-v2/build/outputs/apk/debug/app-v2-debug.apk
+./gradlew assembleDebug                 # 셋 다
+./gradlew testDebugUnitTest             # 세 앱의 테스트(화면 실행·거리 계산·레이더 계산·v2 UI)
 ```
 
 Android Studio(2023.1 이상)에서는 이 폴더를 그대로 열고 원하는 모듈을 Run 하면 됩니다. (JDK 17, Android SDK 34)

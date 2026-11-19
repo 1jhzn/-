@@ -237,6 +237,46 @@ object Classifier {
     }
 
     /**
+     * The same estimate as [distanceLabel], written as a step instead of metres.
+     *
+     * 지훈 asked for the decimal metres to go away ("거리 약 1.7m 이런 소수점 버리고 … 단계로"):
+     * "약 1.7m" reads like a measurement, while the number behind it is only an estimate that
+     * moves with every packet. A step says what a person actually wants to know — is this
+     * thing next to me or in the next room. Cells still return null.
+     */
+    fun distanceStepLabel(
+        rssi: Int,
+        source: SignalSource,
+        txPower: Int? = null,
+        frequencyMhz: Int? = null
+    ): String? = distanceStepLabel(rssi.toFloat(), source, txPower, frequencyMhz)
+
+    fun distanceStepLabel(
+        rssi: Float,
+        source: SignalSource,
+        txPower: Int? = null,
+        frequencyMhz: Int? = null
+    ): String? {
+        val metres = distanceMeters(rssi.toDouble(), source, txPower, frequencyMhz) ?: return null
+        return distanceStep(metres)
+    }
+
+    /**
+     * Five steps, no decimal point: under 1 m, 3 m, 8 m, 20 m, then everything beyond.
+     *
+     * The boundaries sit where the estimate is still trustworthy: below 1 m a Bluetooth
+     * device is effectively in your hand, and past 20 m the reading says little more than
+     * "far away", so a sixth step would be a made-up precision.
+     */
+    fun distanceStep(metres: Double): String = when {
+        metres < 1.0 -> "매우 가까움"
+        metres < 3.0 -> "가까움"
+        metres < 8.0 -> "보통"
+        metres < 20.0 -> "멀어요"
+        else -> "아주 멀어요"
+    }
+
+    /**
      * Whether an advertised txPower can serve as the "how strong am I at 1 m" level.
      *
      * Only a negative RSSI-like value in [-100, -20] dBm is that. Apple and some other

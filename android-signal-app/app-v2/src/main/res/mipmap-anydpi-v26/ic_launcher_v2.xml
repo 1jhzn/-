@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Same radar family as the other two apps, drawn on a teal disc so the v2 icon is told apart
+     from 전파 감지기 (dark disc) and 전파 감지기 (내 주변) (three rings) on the home screen. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/accent_soft" />
+    <foreground android:drawable="@drawable/ic_launcher_v2_foreground" />
+</adaptive-icon>

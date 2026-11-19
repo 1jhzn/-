@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 전파 감지기 v2 shell: header, the two pages (거리 / 내 주변) and the bottom tab bar.
+     Same ids as activity_nearby.xml, because the shared screen class of the other apps is
+     reused; only the included pages are the v2 ones. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <!-- ===== Header ===== -->
+    <LinearLayout
+        android:id="@+id/headerBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="18dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="2dp">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_radar"
+            app:tint="@color/accent" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="9dp"
+            android:layout_weight="1"
+            android:text="전파 감지기 v2"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/bellToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_chip"
+            android:clickable="true"
+            android:contentDescription="새 신호 진동 켜짐 · 눌러서 끄기"
+            android:focusable="true"
+            android:gravity="center"
+            android:minWidth="32dp"
+            android:paddingStart="8dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="4dp"
+            android:text="🔔"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/statusChip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_chip"
+            android:paddingStart="11dp"
+            android:paddingTop="5dp"
+            android:paddingEnd="11dp"
+            android:paddingBottom="5dp"
+            android:text="대기 중"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <!-- ===== Pages ===== -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <include
+            android:id="@+id/distancePage"
+            layout="@layout/content_v2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <include
+            android:id="@+id/nearbyPage"
+            layout="@layout/page_v2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <!-- ===== Bottom tabs: 거리 / 내 주변 ===== -->
+    <LinearLayout
+        android:id="@+id/tabBar"
+        android:layout_width="match_parent"
+        android:layout_height="62dp"
+        android:background="@drawable/bg_tab_bar"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/tabDistance"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingTop="6dp"
+            android:paddingBottom="4dp">
+
+            <TextView
+                android:id="@+id/tabDistanceIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📏"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/tabDistanceLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="거리"
+                android:textColor="@color/accent"
+                android:textSize="11.5sp"
+                android:textStyle="bold" />
+
+            <View
+                android:id="@+id/tabDistanceIndicator"
+                android:layout_width="26dp"
+                android:layout_height="2dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/bg_tab_indicator" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tabNearby"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingTop="6dp"
+            android:paddingBottom="4dp">
+
+            <TextView
+                android:id="@+id/tabNearbyIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:alpha="0.55"
+                android:text="📡"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/tabNearbyLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="내 주변"
+                android:textColor="@color/text_muted"
+                android:textSize="11.5sp" />
+
+            <View
+                android:id="@+id/tabNearbyIndicator"
+                android:layout_width="26dp"
+                android:layout_height="2dp"
+                android:layout_marginTop="3dp"
+                android:background="@drawable/bg_tab_indicator"
+                android:visibility="invisible" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

@@ -29,7 +29,7 @@ import com.jihun.signalradar.model.Signal
  * "내 10m 안 기기" + 스캔 line, the heading line and the ✕ 축소 button stay over the radar.
  * Back leaves fullscreen before it leaves the app.
  */
-class NearbyRadarActivity : SignalRadarActivity() {
+open class NearbyRadarActivity : SignalRadarActivity() {
 
     private enum class Tab { DISTANCE, NEARBY }
 
@@ -140,7 +140,7 @@ class NearbyRadarActivity : SignalRadarActivity() {
         tabNearbyLabel = findViewById(R.id.tabNearbyLabel)
         tabNearbyIndicator = findViewById(R.id.tabNearbyIndicator)
 
-        adapter = SignalAdapter { showDetails(it) }
+        adapter = SignalAdapter(itemRowLayout, itemRowStyle) { showDetails(it) }
         nearbyList.layoutManager = LinearLayoutManager(this)
         nearbyList.adapter = adapter
 

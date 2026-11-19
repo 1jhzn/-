@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 전파 감지기 v2 icon: the radar rings plus a "2" stroke, on the teal accent disc. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M54,44a17,17 0 1,1 -0.01,0z"
+        android:strokeColor="#2ED3C6"
+        android:strokeWidth="2.6" />
+    <path
+        android:pathData="M54,53a8,8 0 1,1 -0.01,0z"
+        android:strokeColor="#2ED3C6"
+        android:strokeAlpha="0.6"
+        android:strokeWidth="2.2" />
+    <path
+        android:pathData="M54,58a2.6,2.6 0 1,1 -0.01,0z"
+        android:fillColor="#2ED3C6" />
+    <path
+        android:pathData="M58,57L68,47"
+        android:strokeColor="#38BDF8"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.4" />
+    <path
+        android:pathData="M72,43m-3,0a3,3 0 1,1 6,0a3,3 0 1,1 -6,0"
+        android:fillColor="#38BDF8" />
+    <!-- the "2" of v2, bottom right -->
+    <path
+        android:pathData="M64,70c0,-4.4 9,-4.4 9,-9.4c0,-2.8 -3.2,-4 -5.4,-2.6c-1,0.6 -1.6,1.6 -1.8,2.6"
+        android:strokeColor="#E9F1F8"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.6" />
+    <path
+        android:pathData="M63.4,70h10"
+        android:strokeColor="#E9F1F8"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.6" />
+</vector>

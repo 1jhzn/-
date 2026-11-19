@@ -56,3 +56,10 @@ jobs:
           name: signal-detector-nearby-debug-apk
           path: android-signal-app/app-nearby/build/outputs/apk/debug/app-nearby-debug.apk
           if-no-files-found: error
+
+      - name: Upload APK (전파 감지기 v2)
+        uses: actions/upload-artifact@v4
+        with:
+          name: signal-detector-v2-debug-apk
+          path: android-signal-app/app-v2/build/outputs/apk/debug/app-v2-debug.apk
+          if-no-files-found: error

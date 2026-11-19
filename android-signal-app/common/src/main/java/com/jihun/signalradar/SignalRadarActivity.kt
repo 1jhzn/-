@@ -60,6 +60,21 @@ abstract class SignalRadarActivity : AppCompatActivity() {
     /** The screen layout for this app; it must contain the distance screen's ids. */
     protected abstract val contentLayout: Int
 
+    /**
+     * How a list row is written. CLASSIC is the v1 card (maker, description, address, metres);
+     * SUMMARY is the v2 card (one summary line, no address, a distance step).
+     */
+    protected open val itemRowStyle: SignalAdapter.RowStyle = SignalAdapter.RowStyle.CLASSIC
+
+    /** The card layout the list inflates; a subclass may hand in its own. */
+    protected open val itemRowLayout: Int = R.layout.item_signal
+
+    /** The detail card layout; a subclass may hand in its own (v2 folds the address away). */
+    protected open val detailLayoutId: Int = R.layout.dialog_detail
+
+    /** Whether the detail body prints the raw address line itself (v2 shows it behind a toggle). */
+    protected open val showAddressInDetail: Boolean = true
+
     protected lateinit var repo: SignalRepository
     private lateinit var ble: BleScanner
     private lateinit var wifi: WifiScanner
@@ -107,6 +122,10 @@ abstract class SignalRadarActivity : AppCompatActivity() {
     protected val isScanning: Boolean
         get() = scanning
 
+    /** The filter the list is showing, so a subclass can word its empty state for it. */
+    protected val activeFilter: Filter
+        get() = filter
+
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
@@ -144,7 +163,7 @@ abstract class SignalRadarActivity : AppCompatActivity() {
         setContentView(contentLayout)
 
         repo = SignalRepository(this)
-        adapter = SignalAdapter { showDetails(it) }
+        adapter = SignalAdapter(itemRowLayout, itemRowStyle) { showDetails(it) }
 
         statusChip = findViewById(R.id.statusChip)
         statusDetail = findViewById(R.id.statusDetail)
@@ -231,6 +250,35 @@ abstract class SignalRadarActivity : AppCompatActivity() {
 
     /** Called on every refresh with the whole snapshot, so a subclass can draw from it. */
     protected open fun onSignalsChanged(all: List<Signal>, newOnes: List<Signal>) {}
+
+    /**
+     * How a distance reads: the v1 metre estimate by default, a step ("매우 가까움") in v2.
+     * Used by the new-signal banner, the detail body and the list rows together, so one screen
+     * never mixes "약 1.7m" with "매우 가까움".
+     */
+    protected open fun distanceTextFor(signal: Signal): String? = Classifier.distanceLabel(
+        signal.smoothedRssi ?: signal.rssi.toFloat(),
+        signal.source,
+        signal.txPower,
+        signal.frequencyMhz
+    )
+
+    /** How the distance under the direction dial is written; v2 keeps the step wording there too. */
+    protected open fun directionDistanceText(signal: Signal, rssi: Float): String? =
+        Classifier.distanceLabel(rssi, signal.source, signal.txPower, signal.frequencyMhz)
+
+    /** The line under the detail title. */
+    protected open fun detailSubtitle(signal: Signal): String = listOfNotNull(
+        signal.source.label,
+        signal.vendor ?: signal.kind,
+        if (showAddressInDetail) signal.address else null
+    ).joinToString(" · ")
+
+    /**
+     * Last chance for a subclass to wire views of its own detail layout (v2's address toggle)
+     * before the card is shown.
+     */
+    protected open fun onDetailDialogReady(dialog: Dialog, signal: Signal) {}
 
     // ------------------------------------------------------------ scanning
 
@@ -326,12 +374,7 @@ abstract class SignalRadarActivity : AppCompatActivity() {
     private fun describeNew(newOnes: List<Signal>): String {
         val parts = ArrayList<String>(3)
         for (signal in newOnes.take(3)) {
-            val where = Classifier.distanceLabel(
-                signal.smoothedRssi ?: signal.rssi.toFloat(),
-                signal.source,
-                signal.txPower,
-                signal.frequencyMhz
-            )
+            val where = distanceTextFor(signal)
             val name = signal.vendor ?: signal.title
             parts.add(if (where != null) "$name · $where" else name)
         }
@@ -401,7 +444,8 @@ abstract class SignalRadarActivity : AppCompatActivity() {
         )
     }
 
-    private fun emptyMessage(): String = when (filter) {
+    /** What the list says when nothing matches; a subclass may word it differently. */
+    protected open fun emptyMessage(): String = when (filter) {
         Filter.NEW -> "새로 잡힌 신호가 없어요.\n‘기준 저장’ 뒤에 처음 나타난 신호가 여기에 보여요."
         Filter.BLE -> "지금 잡히는 블루투스 신호가 없어요."
         Filter.WIFI -> "지금 잡히는 와이파이가 없어요.\n폰의 ‘위치’가 켜져 있어야 목록이 보여요."
@@ -537,7 +581,7 @@ abstract class SignalRadarActivity : AppCompatActivity() {
 
     protected fun showDetails(signal: Signal) {
         val dialog = Dialog(this, R.style.Theme_SignalRadar_Dialog)
-        dialog.setContentView(R.layout.dialog_detail)
+        dialog.setContentView(detailLayoutId)
 
         val title = dialog.findViewById<TextView>(R.id.detailTitle)
         val subtitle = dialog.findViewById<TextView>(R.id.detailSubtitle)
@@ -552,11 +596,7 @@ abstract class SignalRadarActivity : AppCompatActivity() {
         var current = signal
         fun render(view: Signal) {
             title.text = view.title
-            subtitle.text = listOfNotNull(
-                view.source.label,
-                view.vendor ?: view.kind,
-                view.address
-            ).joinToString(" · ")
+            subtitle.text = detailSubtitle(view)
             body.text = detailText(view)
             val mine = if (view.source == SignalSource.BLE) {
                 DeviceName.badgeText(view.isConnected, view.isBonded)
@@ -669,6 +709,7 @@ abstract class SignalRadarActivity : AppCompatActivity() {
 
         close.setOnClickListener { dialog.dismiss() }
         dialog.findViewById<TextView>(R.id.detailCloseTop).setOnClickListener { dialog.dismiss() }
+        onDetailDialogReady(dialog, signal)
 
         dialog.setOnDismissListener { reader?.cancel() }
         dialog.setOnShowListener { shown ->
@@ -737,16 +778,11 @@ abstract class SignalRadarActivity : AppCompatActivity() {
                 }
             )
         }
-        Classifier.distanceLabel(
-            signal.smoothedRssi ?: signal.rssi.toFloat(),
-            signal.source,
-            signal.txPower,
-            signal.frequencyMhz
-        )?.let {
+        distanceTextFor(signal)?.let {
             text.append("대략 거리: ").append(it)
                 .append(" (신호 세기로 계산한 어림값 · 벽이나 사람에 따라 달라져요)\n")
         }
-        text.append("주소: ").append(signal.address).append('\n')
+        if (showAddressInDetail) text.append("주소: ").append(signal.address).append('\n')
         text.append("처음 잡힘: ").append(timeText(signal.firstSeen)).append('\n')
         text.append("마지막: ").append(timeText(signal.lastSeen))
         signal.baselineRssi?.let {
@@ -794,7 +830,8 @@ abstract class SignalRadarActivity : AppCompatActivity() {
             { wifi.requestImmediateScan() },
             // A measured bearing is what puts a device on the 10 m radar with a real
             // direction instead of a placeholder angle, so it is kept per signal id.
-            { azimuth -> repo.setBearing(signal.id, azimuth) }
+            { azimuth -> repo.setBearing(signal.id, azimuth) },
+            { s, rssi -> directionDistanceText(s, rssi) }
         )
         dialog.setOnDismissListener {
             if (finderDialog === dialog) finderDialog = null

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Under the launcher icon: this is the separate v2 app, next to 전파 감지기 and
+         전파 감지기 (내 주변), so the name has to say which one it is. -->
+    <string name="app_name_v2">전파 감지기 v2</string>
+</resources>

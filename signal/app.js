@@ -910,6 +910,11 @@ function setBtBlocked(msg, sub) {
   $('#blocker').innerHTML = '<div class="blocker"><b>' + esc(msg) + '</b><br>' +
     '<span style="color:#9fb2cc">' + (sub || '') + '</span></div>';
 }
+function clearBtBlocked() {
+  var el = $('#blocker');
+  if (el && el.innerHTML) el.innerHTML = '';
+  state.available = true;
+}
 
 function handleBtError(err) {
   var n = err && err.name || '';
@@ -960,6 +965,7 @@ function startLEScan() {
     activeScan = scan;
     state.mode = 'lescan';
     state.scanning = true;
+    clearBtBlocked();
     scan.addEventListener('advertisementreceived', onAdv);
     setScanUi();
     renderNow();
@@ -976,6 +982,7 @@ function startPickerScan(silent) {
   return bt.requestDevice(opts).then(function (dev) {
     state.mode = 'picker';
     state.scanning = true;
+    clearBtBlocked();
     setScanUi();
     ingest({
       id: dev.id, name: dev.name || '(이름 없음)', rssi: null,
@@ -1552,8 +1559,17 @@ function init() {
   renderFreq('2.4GHz', 'auto');
   renderNow();
 
-  // 화면 복귀 시 갱신
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) { sizeCanvas(); renderNow(); } });
+  // 화면으로 돌아오면 가용 상태를 다시 확인한다 (블루투스를 켜고 돌아온 경우)
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) return;
+    sizeCanvas();
+    renderNow();
+    if (bt && typeof bt.getAvailability === 'function') {
+      bt.getAvailability().then(function (a) {
+        if (a && state.available !== true) { clearBtBlocked(); renderNow(); }
+      }).catch(function () {});
+    }
+  });
   window.addEventListener('resize', function () { sizeCanvas(); renderNow(); });
 
   // 45초가 지나 '오래됨' 표시가 바뀌었을 때만 다시 그린다 (화면을 건드리지 않도록)

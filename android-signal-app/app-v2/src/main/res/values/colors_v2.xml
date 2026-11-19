@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 전파 감지기 v2.1 — the bright "나의 찾기" (Find My) palette.
+
+     The other two apps keep their dark colours in common/colors.xml; every colour here has
+     its own name, so nothing the v1 apps draw can change by accident. -->
+<resources>
+    <!-- the page behind everything -->
+    <color name="v2_page">#F3F6F1</color>
+
+    <!-- top area: soft pastel mint/sage, the map-ish part -->
+    <color name="v2_hero_top">#E9F2E4</color>
+    <color name="v2_hero_bottom">#DCEAD6</color>
+    <color name="v2_hero_ring">#C9DFC0</color>
+    <color name="v2_hero_haze">#F2F8EE</color>
+
+    <!-- bottom sheet -->
+    <color name="v2_sheet">#FFFFFF</color>
+    <color name="v2_sheet_soft">#F4F7F3</color>
+    <color name="v2_line">#E5ECE4</color>
+
+    <!-- ink -->
+    <color name="v2_ink">#12201A</color>
+    <color name="v2_ink_soft">#5A6A61</color>
+    <color name="v2_ink_faint">#8D9A92</color>
+
+    <!-- accents -->
+    <color name="v2_blue">#087FFE</color>
+    <color name="v2_blue_deep">#0568D2</color>
+    <color name="v2_blue_soft">#E6F1FF</color>
+    <color name="v2_emerald">#02B95A</color>
+    <color name="v2_emerald_deep">#019A4A</color>
+    <color name="v2_emerald_soft">#E1F7EB</color>
+    <color name="v2_amber">#D98A16</color>
+    <color name="v2_amber_soft">#FCF2DF</color>
+    <color name="v2_red">#CE4234</color>
+    <color name="v2_red_soft">#FCECEA</color>
+    <color name="v2_red_line">#F2C8C3</color>
+    <color name="v2_gray_soft">#EEF2EE</color>
+
+    <!-- the type badges on a list row: a deep circle with a white glyph -->
+    <color name="v2_icon_ble">#0B6E6A</color>
+    <color name="v2_icon_wifi">#137A48</color>
+    <color name="v2_icon_cell">#5A4BA6</color>
+
+    <!-- the orb finder screen: dark at first, emerald once the signal is in reach -->
+    <color name="v2_orb_dark">#07090B</color>
+    <color name="v2_orb_text">#F2F6F4</color>
+    <color name="v2_orb_text_soft">#9EAEA6</color>
+</resources>

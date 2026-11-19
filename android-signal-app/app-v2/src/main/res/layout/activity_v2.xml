@@ -1,177 +1,437 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 전파 감지기 v2 shell: header, the two pages (거리 / 내 주변) and the bottom tab bar.
-     Same ids as activity_nearby.xml, because the shared screen class of the other apps is
-     reused; only the included pages are the v2 ones. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- 전파 감지기 v2.1 — the "나의 찾기" (Find My) shell.
+
+     Top ~40%: a soft pastel map-ish area with the app title, the 🔔/🔕 switch and the scan
+     state chip, and either the nearest-signal callout (신호 tab), the bright 10 m radar
+     (내 주변 tab) or the saved-baseline summary (기준 tab).
+
+     Bottom ~60%: a white sheet with 32dp rounded top corners — grab handle, a big title with
+     the round ▶ 스캔 시작 / ■ 스캔 중지 button, then the page for the chosen tab and the pill
+     tab bar (신호 · 내 주변 · 기준).
+
+     The orb finder (page_orb_v2.xml) is layered over the whole screen; it starts dark and
+     turns emerald when the signal is in reach. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/v2Root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg"
-    android:fitsSystemWindows="true"
-    android:orientation="vertical">
+    android:background="@color/v2_page">
 
-    <!-- ===== Header ===== -->
     <LinearLayout
-        android:id="@+id/headerBar"
+        android:id="@+id/v2Main"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="18dp"
-        android:paddingTop="14dp"
-        android:paddingEnd="18dp"
-        android:paddingBottom="2dp">
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="true"
+        android:orientation="vertical">
 
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:contentDescription="@null"
-            android:src="@drawable/ic_radar"
-            app:tint="@color/accent" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="9dp"
-            android:layout_weight="1"
-            android:text="전파 감지기 v2"
-            android:textColor="@color/text_primary"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/bellToggle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_chip"
-            android:clickable="true"
-            android:contentDescription="새 신호 진동 켜짐 · 눌러서 끄기"
-            android:focusable="true"
-            android:gravity="center"
-            android:minWidth="32dp"
-            android:paddingStart="8dp"
-            android:paddingTop="4dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="4dp"
-            android:text="🔔"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/statusChip"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_chip"
-            android:paddingStart="11dp"
-            android:paddingTop="5dp"
-            android:paddingEnd="11dp"
-            android:paddingBottom="5dp"
-            android:text="대기 중"
-            android:textColor="@color/text_secondary"
-            android:textSize="11sp" />
-    </LinearLayout>
-
-    <!-- ===== Pages ===== -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <include
-            android:id="@+id/distancePage"
-            layout="@layout/content_v2"
+        <!-- ===================== top: the pastel map area (40%) ===================== -->
+        <FrameLayout
+            android:id="@+id/v2Hero"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="0dp"
+            android:layout_weight="40"
+            android:background="@drawable/bg_v2_hero">
 
-        <include
-            android:id="@+id/nearbyPage"
-            layout="@layout/page_v2"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone" />
-    </FrameLayout>
+            <com.jihun.signalradar.v2.V2MapHeroView
+                android:id="@+id/v2HeroBackdrop"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
 
-    <!-- ===== Bottom tabs: 거리 / 내 주변 ===== -->
-    <LinearLayout
-        android:id="@+id/tabBar"
-        android:layout_width="match_parent"
-        android:layout_height="62dp"
-        android:background="@drawable/bg_tab_bar"
-        android:orientation="horizontal">
+            <!-- title, bell switch, scan state -->
+            <LinearLayout
+                android:id="@+id/v2HeaderBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="20dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="4dp">
 
+                <TextView
+                    android:id="@+id/v2AppTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="전파 감지기 v2"
+                    android:textColor="@color/v2_ink"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/bellToggle"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_v2_callout"
+                    android:clickable="true"
+                    android:contentDescription="새 신호 진동 켜짐 · 눌러서 끄기"
+                    android:elevation="2dp"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:text="🔔"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/statusChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:layout_marginStart="7dp"
+                    android:background="@drawable/bg_v2_callout"
+                    android:elevation="2dp"
+                    android:gravity="center"
+                    android:paddingStart="11dp"
+                    android:paddingEnd="11dp"
+                    android:text="대기 중"
+                    android:textColor="@color/v2_ink_soft"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <!-- what the top area shows, one per tab -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="52dp"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:paddingBottom="16dp">
+
+                <!-- 신호: the nearest signal, tapped to open the orb finder -->
+                <LinearLayout
+                    android:id="@+id/v2Callout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal|bottom"
+                    android:background="@drawable/bg_v2_callout"
+                    android:clickable="true"
+                    android:elevation="5dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="14dp"
+                    android:paddingTop="13dp"
+                    android:paddingEnd="14dp"
+                    android:paddingBottom="13dp">
+
+                    <FrameLayout
+                        android:id="@+id/v2CalloutIconBox"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_v2_icon_ble">
+
+                        <ImageView
+                            android:id="@+id/v2CalloutIcon"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_ble"
+                            app:tint="#FFFFFF" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/v2CalloutTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="가장 가까운 신호"
+                            android:textColor="@color/v2_ink"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/v2CalloutSub"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="스캔을 시작하면 여기에 나타나요"
+                            android:textColor="@color/v2_ink_soft"
+                            android:textSize="11.5sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/v2CalloutStep"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_v2_step_very"
+                        android:maxLines="1"
+                        android:singleLine="true"
+                        android:paddingStart="10dp"
+                        android:paddingTop="5dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="5dp"
+                        android:text="찾기 ›"
+                        android:textColor="@color/v2_emerald_deep"
+                        android:textSize="11.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- 내 주변: the bright 10 m radar -->
+                <FrameLayout
+                    android:id="@+id/v2RadarBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone">
+
+                    <com.jihun.signalradar.v2.V2RadarDialView
+                        android:id="@+id/nearbyRadar"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+
+                    <TextView
+                        android:id="@+id/nearbyFullscreen"
+                        android:layout_width="wrap_content"
+                        android:layout_height="28dp"
+                        android:layout_gravity="top|end"
+                        android:background="@drawable/bg_v2_callout"
+                        android:clickable="true"
+                        android:elevation="3dp"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:text="⛶ 전체화면"
+                        android:textColor="@color/v2_ink_soft"
+                        android:textSize="10.5sp" />
+
+                    <TextView
+                        android:id="@+id/nearbyHeading"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom|center_horizontal"
+                        android:background="@drawable/bg_v2_callout"
+                        android:elevation="3dp"
+                        android:paddingStart="10dp"
+                        android:paddingTop="4dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="4dp"
+                        android:text="폰이 보는 방향: 읽는 중…"
+                        android:textColor="@color/v2_ink_soft"
+                        android:textSize="10.5sp" />
+
+                    <LinearLayout
+                        android:id="@+id/nearbyLegend"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="top|start"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="● 블루투스"
+                            android:textColor="@color/v2_blue"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:text="● 와이파이"
+                            android:textColor="@color/v2_icon_wifi"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+                </FrameLayout>
+
+                <!-- 기준: what the saved baseline holds -->
+                <LinearLayout
+                    android:id="@+id/v2RecordHero"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal|bottom"
+                    android:background="@drawable/bg_v2_callout"
+                    android:elevation="5dp"
+                    android:orientation="vertical"
+                    android:paddingStart="16dp"
+                    android:paddingTop="13dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="13dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/v2RecordCount"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="기준 0개"
+                        android:textColor="@color/v2_ink"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/v2RecordSavedAt"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="아직 기준을 저장하지 않았어요"
+                        android:textColor="@color/v2_ink_soft"
+                        android:textSize="11.5sp" />
+                </LinearLayout>
+            </FrameLayout>
+        </FrameLayout>
+
+        <!-- ===================== bottom: the white sheet (60%) ===================== -->
         <LinearLayout
-            android:id="@+id/tabDistance"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_horizontal"
+            android:id="@+id/v2Sheet"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="60"
+            android:background="@drawable/bg_v2_sheet"
             android:orientation="vertical"
-            android:paddingTop="6dp"
-            android:paddingBottom="4dp">
-
-            <TextView
-                android:id="@+id/tabDistanceIcon"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📏"
-                android:textSize="15sp" />
-
-            <TextView
-                android:id="@+id/tabDistanceLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:text="거리"
-                android:textColor="@color/accent"
-                android:textSize="11.5sp"
-                android:textStyle="bold" />
+            android:paddingStart="18dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="10dp">
 
             <View
-                android:id="@+id/tabDistanceIndicator"
-                android:layout_width="26dp"
-                android:layout_height="2dp"
-                android:layout_marginTop="3dp"
-                android:background="@drawable/bg_tab_indicator" />
-        </LinearLayout>
+                android:layout_width="42dp"
+                android:layout_height="5dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/bg_v2_grab" />
 
-        <LinearLayout
-            android:id="@+id/tabNearby"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_horizontal"
-            android:orientation="vertical"
-            android:paddingTop="6dp"
-            android:paddingBottom="4dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/v2SheetTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="주변 신호"
+                    android:textColor="@color/v2_ink"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/btnScan"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_v2_scan_start"
+                    android:clickable="true"
+                    android:ellipsize="end"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:paddingStart="15dp"
+                    android:paddingEnd="15dp"
+                    android:text="▶ 스캔 시작"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12.5sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <TextView
-                android:id="@+id/tabNearbyIcon"
-                android:layout_width="wrap_content"
+                android:id="@+id/statusDetail"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:alpha="0.55"
-                android:text="📡"
-                android:textSize="15sp" />
-
-            <TextView
-                android:id="@+id/tabNearbyLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:text="내 주변"
-                android:textColor="@color/text_muted"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="‘스캔 시작’을 누르면 주변 전파를 읽기 시작해요"
+                android:textColor="@color/v2_ink_faint"
                 android:textSize="11.5sp" />
 
-            <View
-                android:id="@+id/tabNearbyIndicator"
-                android:layout_width="26dp"
-                android:layout_height="2dp"
-                android:layout_marginTop="3dp"
-                android:background="@drawable/bg_tab_indicator"
-                android:visibility="invisible" />
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <include
+                    android:id="@+id/signalPage"
+                    layout="@layout/content_v2"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <include
+                    android:id="@+id/nearbyPage"
+                    layout="@layout/page_v2"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone" />
+
+                <include
+                    android:id="@+id/recordPage"
+                    layout="@layout/page_record_v2"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone" />
+            </FrameLayout>
+
+            <!-- the pill tab bar -->
+            <LinearLayout
+                android:id="@+id/v2TabBar"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_v2_tabbar"
+                android:orientation="horizontal"
+                android:padding="4dp">
+
+                <TextView
+                    android:id="@+id/tabSignal"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_v2_tab_on"
+                    android:clickable="true"
+                    android:elevation="1dp"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:text="신호"
+                    android:textColor="@color/v2_ink"
+                    android:textSize="12.5sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tabNearby"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:text="내 주변"
+                    android:textColor="@color/v2_ink_faint"
+                    android:textSize="12.5sp" />
+
+                <TextView
+                    android:id="@+id/tabRecord"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:text="기준"
+                    android:textColor="@color/v2_ink_faint"
+                    android:textSize="12.5sp" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
-</LinearLayout>
+
+    <include
+        android:id="@+id/orbPage"
+        layout="@layout/page_orb_v2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+</FrameLayout>

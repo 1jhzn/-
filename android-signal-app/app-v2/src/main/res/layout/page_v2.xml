@@ -1,249 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- v2 내 주변 page: the 10 m radar and the list inside it, with the v2 empty-state placement.
-
-     The radar keeps its 2m / 5m / 10m rings — those are the scale of the circle, not an
-     estimate — while the list under it shows the distance as a step (매우 가까움). -->
+<!-- v2.1 내 주변 page: the devices inside the 10 m radar, as the same Find-My rows. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:paddingStart="18dp"
-    android:paddingTop="4dp"
-    android:paddingEnd="18dp">
-
-    <LinearLayout
-        android:id="@+id/nearbyTopRow"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/nearbyTitle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="내 10m 안 기기 0개"
-            android:textColor="@color/text_primary"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/nearbyScan"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:background="@drawable/bg_pill_small"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="▶  스캔 시작"
-            android:textColor="@color/button_on_primary"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-    </LinearLayout>
+    android:orientation="vertical">
 
     <TextView
-        android:id="@+id/nearbyHeading"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="폰이 보는 방향: 확인 중…"
-        android:textColor="@color/text_muted"
-        android:textSize="11sp" />
-
-    <FrameLayout
-        android:id="@+id/radarArea"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="6dp"
-        android:layout_weight="1">
-
-        <FrameLayout
-            android:id="@+id/radarHolder"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_gravity="center">
-
-            <com.jihun.signalradar.nearby.NearbyRadarView
-                android:id="@+id/nearbyRadar"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_nearby_panel"
-                android:contentDescription="10m 레이더" />
-
-            <TextView
-                android:id="@+id/nearbyFullscreen"
-                android:layout_width="wrap_content"
-                android:layout_height="30dp"
-                android:layout_gravity="top|end"
-                android:layout_marginTop="9dp"
-                android:layout_marginEnd="9dp"
-                android:background="@drawable/bg_pill_small_stop"
-                android:clickable="true"
-                android:contentDescription="레이더 전체화면으로 보기"
-                android:focusable="true"
-                android:gravity="center"
-                android:paddingStart="11dp"
-                android:paddingEnd="11dp"
-                android:text="⛶ 전체화면"
-                android:textColor="@color/accent"
-                android:textSize="11.5sp"
-                android:textStyle="bold" />
-        </FrameLayout>
-    </FrameLayout>
-
-    <LinearLayout
-        android:id="@+id/nearbyLegendRadios"
+        android:id="@+id/nearbyCount"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="●"
-            android:textColor="@color/nearby_ble"
-            android:textSize="12sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:text="블루투스"
-            android:textColor="@color/text_secondary"
-            android:textSize="10.5sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:text="●"
-            android:textColor="@color/nearby_wifi"
-            android:textSize="12sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:text="와이파이"
-            android:textColor="@color/text_secondary"
-            android:textSize="10.5sp" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/nearbyLegendDots"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="◉"
-            android:textColor="@color/text_primary"
-            android:textSize="12sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:text="방향 측정됨"
-            android:textColor="@color/text_secondary"
-            android:textSize="10.5sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:text="◌"
-            android:textColor="@color/text_muted"
-            android:textSize="12sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:text="방향 미측정"
-            android:textColor="@color/text_secondary"
-            android:textSize="10.5sp" />
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/nearbyNote"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="레이더 눈금은 2m · 5m · 10m · 아래 목록은 단계로 보여줘요"
-        android:textColor="@color/text_muted"
-        android:textSize="10.5sp" />
-
-    <TextView
-        android:id="@+id/nearbyLegendHint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:text="진한 점은 방향 측정됨 · 연한 점은 눌러서 방향 찾기"
-        android:textColor="@color/text_muted"
-        android:textSize="10.5sp" />
-
-    <LinearLayout
-        android:id="@+id/nearbyListHeader"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="9dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="10m 이내 기기"
-            android:textColor="@color/text_primary"
-            android:textSize="12.5sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/nearbyCount"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="0개"
-            android:textColor="@color/text_muted"
-            android:textSize="11sp" />
-    </LinearLayout>
+        android:text="10m 안에 잡힌 기기 0개"
+        android:textColor="@color/v2_ink_soft"
+        android:textSize="11.5sp" />
 
     <FrameLayout
-        android:id="@+id/nearbyListBox"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="4dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:layout_marginTop="6dp">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/nearbyList"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingBottom="8dp"
+            android:paddingBottom="6dp"
             android:scrollbars="none" />
 
-        <!-- Empty state: at the top of the list box, right under its header. -->
         <TextView
             android:id="@+id/nearbyEmpty"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="top|center_horizontal"
+            android:layout_height="wrap_content"
             android:lineSpacingExtra="3dp"
-            android:paddingTop="18dp"
-            android:text="아직 10m 안에 잡힌 기기가 없어요.\n‘스캔 시작’을 누르고 주변을 둘러보세요."
-            android:textColor="@color/text_muted"
-            android:textSize="12sp"
-            android:visibility="gone" />
+            android:text="10m 안에 잡힌 기기가 없어요.\n기기를 누르면 그 기기만 찾는 화면이 열려요."
+            android:textColor="@color/v2_ink_faint"
+            android:textSize="12sp" />
     </FrameLayout>
 </LinearLayout>

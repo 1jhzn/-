@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v2.1 기준 page: save what my room normally looks like, and choose whether a new signal
+     may buzz the phone. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_v2_row"
+            android:orientation="vertical"
+            android:padding="13dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="지금 잡히는 신호를 ‘기준’으로 저장해 두면, 그 뒤에 처음 나타난 신호만 🚨 새 신호로 알려드려요."
+                android:textColor="@color/v2_ink_soft"
+                android:textSize="11.5sp"
+                android:lineSpacingExtra="2dp" />
+
+            <TextView
+                android:id="@+id/recordSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="7dp"
+                android:text="저장된 기준: 0개"
+                android:textColor="@color/v2_ink"
+                android:textSize="12.5sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/btnBaseline"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_v2_button_primary"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:text="📌 지금 신호를 기준으로 저장"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/v2VibrateRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_v2_row"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="13dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="새 신호 진동"
+                    android:textColor="@color/v2_ink"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="새 신호가 잡히면 10초에 한 번, 아주 약하게 울려요"
+                    android:textColor="@color/v2_ink_faint"
+                    android:textSize="10.5sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/v2VibrateState"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_v2_step_very"
+                android:paddingStart="11dp"
+                android:paddingTop="5dp"
+                android:paddingEnd="11dp"
+                android:paddingBottom="5dp"
+                android:text="🔔 켜짐"
+                android:textColor="@color/v2_emerald_deep"
+                android:textSize="11.5sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:lineSpacingExtra="2.5dp"
+            android:text="· 이름을 읽는 시간은 0.7초로 끊고, 읽는 중에는 ⏹ 읽기 멈추기로 바로 끝낼 수 있어요.\n· 기기 상세의 MAC 주소는 ‘세부 주소 보기’를 눌러야 보여요.\n· 거리는 신호 세기로 계산한 어림값이라 벽·사람에 따라 달라져요."
+            android:textColor="@color/v2_ink_faint"
+            android:textSize="10.5sp" />
+    </LinearLayout>
+</ScrollView>

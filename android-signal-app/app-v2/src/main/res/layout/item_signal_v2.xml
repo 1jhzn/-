@@ -1,28 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- v2 list card: a one-line title, one summary line, and the distance step on the right.
+<!-- v2.1 list row, Find-My style: a soft rounded row on the white sheet with
 
-     Removed on purpose (지훈: "카드 제목 1줄 제한 + 중복 설명 삭제", "MAC 주소 작게 접기"):
-       * the maker line, the two-line description and the `블루투스 · AA:BB:…` address line
-         are gone — they said the same thing three times and the address belongs to the
-         detail card;
-       * the broadcast-name line is gone too, because the title already carries that name.
-     What stays: icon, title (1 line, END-ellipsized), one summary line, the 내 폰 badge,
-     and the strength column with the distance step (매우 가까움 / 가까움 / 보통 / …). -->
+       ( ● )   지훈의 AirPods            ┌──────────────┐
+                블루투스 · 애플            │  매우 가까움  │
+                                          └──────────────┘
+
+     The circular badge on the left is coloured by radio (blue-green for Bluetooth, green for
+     Wi-Fi, violet for a base station) with a white glyph; the badge on the right is the
+     distance step. The MAC address never appears in the list (지훈: MAC 주소는 접어 두기) —
+     itemRssi and itemBarFill stay only because the shared adapter of the other apps looks
+     them up; they are not shown. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="7dp"
-    android:background="@drawable/bg_card"
+    android:layout_marginBottom="6dp"
+    android:background="@drawable/bg_v2_row"
     android:clickable="true"
     android:focusable="true"
+    android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="12dp">
+    android:paddingStart="10dp"
+    android:paddingTop="9dp"
+    android:paddingEnd="10dp"
+    android:paddingBottom="9dp">
 
     <FrameLayout
-        android:layout_width="38dp"
-        android:layout_height="38dp"
-        android:background="@drawable/bg_card_icon">
+        android:id="@+id/itemIconBox"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_v2_icon_ble">
 
         <ImageView
             android:id="@+id/itemIcon"
@@ -31,44 +38,69 @@
             android:layout_gravity="center"
             android:contentDescription="@null"
             android:src="@drawable/ic_ble"
-            app:tint="@color/accent" />
+            app:tint="#FFFFFF" />
     </FrameLayout>
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
+        android:layout_marginStart="11dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/itemTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:text="제목"
+            android:textColor="@color/v2_ink"
+            android:textSize="14.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/itemDetail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="블루투스 · 제조사"
+            android:textColor="@color/v2_ink_soft"
+            android:textSize="11.5sp" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
             android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/itemTitle"
-                android:layout_width="0dp"
+                android:id="@+id/itemBadgeMine"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:singleLine="true"
-                android:text="제목"
-                android:textColor="@color/text_primary"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:background="@drawable/bg_badge_mine"
+                android:paddingStart="7dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="7dp"
+                android:paddingBottom="2dp"
+                android:text="🔗 내 폰 연결됨"
+                android:textColor="#FEF3C7"
+                android:textSize="9.5sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/itemBadgeNew"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="5dp"
                 android:background="@drawable/bg_badge_new"
-                android:paddingStart="6dp"
+                android:paddingStart="7dp"
                 android:paddingTop="2dp"
-                android:paddingEnd="6dp"
+                android:paddingEnd="7dp"
                 android:paddingBottom="2dp"
                 android:text="🚨 새 신호"
                 android:textColor="#FEE2E2"
@@ -81,106 +113,46 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="5dp"
                 android:background="@drawable/bg_badge_boost"
-                android:paddingStart="6dp"
+                android:paddingStart="7dp"
                 android:paddingTop="2dp"
-                android:paddingEnd="6dp"
+                android:paddingEnd="7dp"
                 android:paddingBottom="2dp"
                 android:text="세짐"
                 android:textColor="#FDE68A"
                 android:textSize="9.5sp"
                 android:visibility="gone" />
         </LinearLayout>
-
-        <!-- The one summary line: 블루투스 · 애플 / 와이파이 · ipTIME(EFM) -->
-        <TextView
-            android:id="@+id/itemDetail"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="블루투스 · 제조사"
-            android:textColor="@color/text_secondary"
-            android:textSize="11.5sp" />
-
-        <TextView
-            android:id="@+id/itemBadgeMine"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:background="@drawable/bg_badge_mine"
-            android:paddingStart="7dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="7dp"
-            android:paddingBottom="2dp"
-            android:text="🔗 내 폰 연결됨"
-            android:textColor="#FEF3C7"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:visibility="gone" />
     </LinearLayout>
 
-    <LinearLayout
-        android:layout_width="74dp"
+    <TextView
+        android:id="@+id/itemDistance"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical"
-        android:layout_marginStart="6dp"
-        android:gravity="center_horizontal"
-        android:orientation="vertical">
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_v2_step_very"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:paddingStart="10dp"
+        android:paddingTop="5dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="5dp"
+        android:text="매우 가까움"
+        android:textColor="@color/v2_emerald_deep"
+        android:textSize="11.5sp"
+        android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/itemDistance"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:gravity="center"
-            android:includeFontPadding="false"
-            android:maxLines="1"
-            android:singleLine="true"
-            android:text="매우 가까움"
-            android:textColor="@color/accent"
-            android:textSize="12.5sp"
-            android:textStyle="bold" />
+    <!-- Looked up by the shared adapter of the v1 screens; never drawn in v2. -->
+    <TextView
+        android:id="@+id/itemRssi"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:text="-70"
+        android:visibility="gone" />
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/itemRssi"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:includeFontPadding="false"
-                android:text="-70"
-                android:textColor="@color/accent"
-                android:textSize="10.5sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="2dp"
-                android:includeFontPadding="false"
-                android:text="dBm"
-                android:textColor="@color/text_muted"
-                android:textSize="9sp" />
-        </LinearLayout>
-
-        <FrameLayout
-            android:layout_width="44dp"
-            android:layout_height="4dp"
-            android:layout_marginTop="5dp"
-            android:background="@drawable/bg_track">
-
-            <View
-                android:id="@+id/itemBarFill"
-                android:layout_width="20dp"
-                android:layout_height="4dp"
-                android:background="@drawable/bg_fill" />
-        </FrameLayout>
-    </LinearLayout>
-
+    <View
+        android:id="@+id/itemBarFill"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone" />
 </LinearLayout>

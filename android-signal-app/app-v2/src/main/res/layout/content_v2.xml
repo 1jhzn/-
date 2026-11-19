@@ -1,44 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- v2 거리 page: the same screen as content_distance.xml, with the three UI fixes.
+<!-- v2.1 신호 page, inside the white sheet: the new-signal banner, the permission notice, a
+     small counter strip, the two-row filter chips and the signal list.
 
-     1) The empty-state text sits at the TOP of the list area (gravity top, paddingTop 26dp)
-        instead of floating in the middle/bottom of an empty screen.
-     2) The filter chips are two rows instead of one long row, so every chip's text is whole
-        at 360dp — no horizontal scrolling and nothing cut off at the right edge.
-     3) The list above them uses item_signal_v2.xml (one summary line, no MAC, distance step),
-        handed in by V2RadarActivity. -->
+     The empty-state text sits at the TOP of the list area (지훈: 빈 화면 문구는 위로), and the
+     chips are on two rows so nothing is cut off at 320–360dp. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg"
     android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/statusDetail"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingStart="18dp"
-        android:paddingTop="2dp"
-        android:paddingEnd="18dp"
-        android:paddingBottom="8dp"
-        android:text="스캔을 시작하면 주변 신호를 읽어요"
-        android:textColor="@color/text_muted"
-        android:textSize="11.5sp" />
-
-    <!-- ===== New signal alert banner ===== -->
+    <!-- ===== new signal banner ===== -->
     <LinearLayout
         android:id="@+id/alertBanner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="18dp"
-        android:layout_marginEnd="18dp"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_banner"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_v2_banner_new"
         android:clickable="true"
         android:focusable="true"
         android:orientation="vertical"
-        android:padding="13dp"
+        android:padding="11dp"
         android:visibility="gone">
 
         <TextView
@@ -46,32 +28,31 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="🚨 평소에 없던 새 신호가 잡혔어요"
-            android:textColor="#FCA5A5"
-            android:textSize="14sp"
+            android:textColor="@color/v2_red"
+            android:textSize="13sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/alertBody"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
+            android:layout_marginTop="2dp"
             android:lineSpacingExtra="2dp"
+            android:maxLines="3"
             android:text=""
-            android:textColor="#FECACA"
-            android:textSize="12sp" />
+            android:textColor="@color/v2_ink_soft"
+            android:textSize="11.5sp" />
     </LinearLayout>
 
-    <!-- ===== Notice (permissions / bluetooth / location) ===== -->
+    <!-- ===== permissions / bluetooth / location notice ===== -->
     <LinearLayout
         android:id="@+id/noticeCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="18dp"
-        android:layout_marginEnd="18dp"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_banner_info"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_v2_notice"
         android:orientation="vertical"
-        android:padding="13dp"
+        android:padding="11dp"
         android:visibility="gone">
 
         <TextView
@@ -80,184 +61,59 @@
             android:layout_height="wrap_content"
             android:lineSpacingExtra="2dp"
             android:text=""
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            android:textColor="@color/v2_ink_soft"
+            android:textSize="11.5sp" />
 
         <TextView
             android:id="@+id/noticeAction"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="9dp"
-            android:background="@drawable/bg_button_secondary"
-            android:paddingStart="14dp"
-            android:paddingTop="7dp"
-            android:paddingEnd="14dp"
-            android:paddingBottom="7dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_v2_button_soft"
+            android:paddingStart="13dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="13dp"
+            android:paddingBottom="6dp"
             android:text="설정 열기"
-            android:textColor="@color/accent"
-            android:textSize="12.5sp" />
-    </LinearLayout>
-
-    <!-- ===== Counters ===== -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="18dp"
-        android:layout_marginEnd="18dp"
-        android:background="@drawable/bg_card"
-        android:orientation="horizontal"
-        android:paddingTop="11dp"
-        android:paddingBottom="11dp">
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/statBle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="@color/accent"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:text="블루투스"
-                android:textColor="@color/text_muted"
-                android:textSize="10sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/statWifi"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="@color/green"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:text="와이파이"
-                android:textColor="@color/text_muted"
-                android:textSize="10sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/statCell"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="@color/purple"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:text="기지국"
-                android:textColor="@color/text_muted"
-                android:textSize="10sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/statNew"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="@color/text_primary"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:text="새 신호"
-                android:textColor="@color/text_muted"
-                android:textSize="10sp" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <!-- ===== Actions ===== -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="18dp"
-        android:layout_marginTop="9dp"
-        android:layout_marginEnd="18dp"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/btnScan"
-            android:layout_width="0dp"
-            android:layout_height="46dp"
-            android:layout_weight="1"
-            android:background="@drawable/bg_button_primary"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:text="▶  스캔 시작"
-            android:textColor="#04211F"
-            android:textSize="14.5sp"
+            android:textColor="@color/v2_blue"
+            android:textSize="11.5sp"
             android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/btnBaseline"
-            android:layout_width="wrap_content"
-            android:layout_height="46dp"
-            android:layout_marginStart="8dp"
-            android:background="@drawable/bg_button_secondary"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center"
-            android:paddingStart="15dp"
-            android:paddingEnd="15dp"
-            android:text="기준 저장"
-            android:textColor="@color/text_primary"
-            android:textSize="13.5sp" />
     </LinearLayout>
 
-    <!-- ===== Filters: two rows, so every chip's text is whole on a 360dp phone ===== -->
+    <!-- The shared screen class counts each radio every refresh; the v2 sheet shows those
+         numbers in the filter chips instead of a strip of its own, so the list keeps the
+         room. These four views stay for the shared code to write into. -->
+    <TextView
+        android:id="@+id/statBle"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/statWifi"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/statCell"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/statNew"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone" />
+
+    <!-- ===== filters: two rows, so every chip's text is whole on a 320dp phone ===== -->
     <LinearLayout
         android:id="@+id/chipRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="9dp"
-        android:orientation="vertical"
-        android:paddingStart="18dp"
-        android:paddingEnd="18dp">
+        android:layout_marginTop="7dp"
+        android:orientation="vertical">
 
         <LinearLayout
             android:id="@+id/chipRowTop"
@@ -268,46 +124,46 @@
             <TextView
                 android:id="@+id/chipAll"
                 android:layout_width="wrap_content"
-                android:layout_height="30dp"
-                android:background="@drawable/bg_chip_selected"
+                android:layout_height="29dp"
+                android:background="@drawable/bg_v2_chip_on"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
                 android:text="전체"
-                android:textColor="@color/accent"
-                android:textSize="12.5sp" />
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
 
             <TextView
                 android:id="@+id/chipNew"
                 android:layout_width="wrap_content"
-                android:layout_height="30dp"
+                android:layout_height="29dp"
                 android:layout_marginStart="6dp"
-                android:background="@drawable/bg_chip"
+                android:background="@drawable/bg_v2_chip"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
                 android:text="🚨 새 신호"
-                android:textColor="@color/text_secondary"
-                android:textSize="12.5sp" />
+                android:textColor="@color/v2_ink_soft"
+                android:textSize="12sp" />
 
             <TextView
                 android:id="@+id/chipBle"
                 android:layout_width="wrap_content"
-                android:layout_height="30dp"
+                android:layout_height="29dp"
                 android:layout_marginStart="6dp"
-                android:background="@drawable/bg_chip"
+                android:background="@drawable/bg_v2_chip"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
                 android:text="블루투스"
-                android:textColor="@color/text_secondary"
-                android:textSize="12.5sp" />
+                android:textColor="@color/v2_ink_soft"
+                android:textSize="12sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -320,82 +176,88 @@
             <TextView
                 android:id="@+id/chipWifi"
                 android:layout_width="wrap_content"
-                android:layout_height="30dp"
-                android:background="@drawable/bg_chip"
+                android:layout_height="29dp"
+                android:background="@drawable/bg_v2_chip"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
                 android:text="와이파이"
-                android:textColor="@color/text_secondary"
-                android:textSize="12.5sp" />
+                android:textColor="@color/v2_ink_soft"
+                android:textSize="12sp" />
 
             <TextView
                 android:id="@+id/chipCell"
                 android:layout_width="wrap_content"
-                android:layout_height="30dp"
+                android:layout_height="29dp"
                 android:layout_marginStart="6dp"
-                android:background="@drawable/bg_chip"
+                android:background="@drawable/bg_v2_chip"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
                 android:text="기지국"
-                android:textColor="@color/text_secondary"
-                android:textSize="12.5sp" />
+                android:textColor="@color/v2_ink_soft"
+                android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- ===== List ===== -->
+    <!-- ===== list ===== -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:layout_marginTop="6dp">
 
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/signalList"
+            android:id="@+id/v2SignalList"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingStart="18dp"
-            android:paddingTop="9dp"
-            android:paddingEnd="18dp"
-            android:paddingBottom="10dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="6dp"
             android:scrollbars="none" />
 
-        <!-- Empty state: top of the list area, not the middle of a blank screen. -->
+        <!-- The shared screen class keeps its own adapter for the filters and the counters;
+             its list is never shown in the v2 layout (the rows above are the v2 cards). -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/signalList"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:visibility="gone" />
+
+        <!-- Empty state: at the top of the list area, not the middle of a blank screen. -->
         <LinearLayout
             android:id="@+id/emptyState"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="top|center_horizontal"
             android:orientation="vertical"
-            android:paddingStart="30dp"
-            android:paddingTop="26dp"
-            android:paddingEnd="30dp"
+            android:paddingStart="26dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="26dp"
             android:visibility="gone">
 
             <ImageView
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:alpha="0.35"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:alpha="0.30"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_radar"
-                app:tint="@color/text_muted" />
+                app:tint="@color/v2_ink_soft" />
 
             <TextView
                 android:id="@+id/emptyText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="7dp"
                 android:gravity="center"
                 android:lineSpacingExtra="3dp"
                 android:text="아직 잡힌 신호가 없어요"
-                android:textColor="@color/text_muted"
-                android:textSize="12.5sp" />
+                android:textColor="@color/v2_ink_faint"
+                android:textSize="12sp" />
         </LinearLayout>
     </FrameLayout>
-
 </LinearLayout>

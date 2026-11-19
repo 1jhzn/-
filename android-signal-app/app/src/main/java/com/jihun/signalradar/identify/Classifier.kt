@@ -1,0 +1,206 @@
+package com.jihun.signalradar.identify
+
+import com.jihun.signalradar.model.SignalSource
+import kotlin.math.pow
+
+/**
+ * Turns raw radio data into something a person can read: what the device probably is,
+ * which band it uses, and roughly how far away it sits.
+ */
+object Classifier {
+
+    // ---------------------------------------------------------------- Bluetooth
+
+    private const val APPLE = 0x004C
+
+    fun bleKind(companyId: Int?, data: ByteArray?): String? {
+        if (companyId == null) return null
+        return when (companyId) {
+            APPLE -> appleKind(data)
+            0x0075 -> "삼성 기기(갤럭시·버즈·워치)"
+            0x00E0, 0x018E -> "구글 기기(픽셀·크롬캐스트·패스트페어)"
+            0x038F -> "샤오미 기기(폰·밴드·IoT)"
+            0x00C4 -> "LG 기기"
+            0x027D -> "화웨이 기기"
+            0x067C -> "타일(Tile) 분실물 추적기"
+            0x0CC2 -> "앤커(사운드코어·이어버드)"
+            0x009E -> "보스(Bose) 오디오"
+            0x0157 -> "샤오미 밴드(휴미)"
+            0x0087 -> "가민 워치·사이클링"
+            0x0059 -> "노르딕 칩 기기(IoT·비콘)"
+            0x02E5 -> "ESP32 개발보드·IoT 기기"
+            0x0006 -> "마이크로소프트 기기"
+            0x0171 -> "아마존 기기(에코·파이어TV)"
+            0x000F -> "브로드컴 칩 기기"
+            0x000D -> "텍사스인스트루먼트 칩 기기"
+            0x000A, 0x001D, 0x00D7 -> "퀄컴 칩 기기"
+            0x013C -> "무라타 칩 기기"
+            0x012D -> "소니 기기"
+            0x0056 -> "소니에릭슨 기기"
+            0x00B8 -> "퀄컴 칩 기기"
+            else -> null
+        }
+    }
+
+    /**
+     * Apple advertises a 1-byte "type" right after its company id, which tells us
+     * whether the signal comes from AirPods, an iPhone nearby, or a Find My tracker.
+     */
+    private fun appleKind(data: ByteArray?): String {
+        val type = if (data != null && data.size > 2) data[2].toInt() and 0xFF else -1
+        return when (type) {
+            0x12 -> "에어태그·분실물 추적기(Find My)"
+            0x10 -> "아이폰·아이패드 근접 신호"
+            0x0F -> "핸드오프(아이폰·맥·워치)"
+            0x0E -> "아이폰 근접 신호"
+            0x0D -> "아이폰 근접 신호"
+            0x0C -> "핸드오프"
+            0x09 -> "에어팟·비츠"
+            0x07 -> "에어팟"
+            0x05 -> "에어드롭"
+            0x02 -> "아이비콘(iBeacon) 비콘"
+            else -> "애플 기기(아이폰·에어팟·태그 중 하나)"
+        }
+    }
+
+    fun bleServiceHint(uuids: List<String>?): String? {
+        if (uuids.isNullOrEmpty()) return null
+        val found = ArrayList<String>(2)
+        for (uuid in uuids) {
+            val s = uuid.lowercase()
+            val label = when {
+                s.startsWith("0000fe9f") -> "패스트페어(구글)"
+                s.startsWith("0000feaa") -> "에드스톤 비콘"
+                s.startsWith("0000fd6f") -> "노출 알림"
+                s.startsWith("0000fe2c") -> "샤오미 서비스"
+                s.startsWith("0000180f") -> "배터리"
+                s.startsWith("00001812") -> "입력장치(HID)"
+                s.startsWith("0000180d") -> "심박수"
+                s.startsWith("0000fe9a") -> "애플 서비스"
+                else -> null
+            }
+            if (label != null && !found.contains(label)) found.add(label)
+        }
+        if (found.isEmpty()) return null
+        return found.joinToString(", ")
+    }
+
+    // ------------------------------------------------------------------ Wi-Fi
+
+    fun wifiKind(ssid: String, vendor: String?): String? {
+        val s = ssid.uppercase()
+        if (ssid.isBlank() || s == "<UNKNOWN SSID>") return "숨김 SSID(이름 감춘 공유기)"
+
+        val byName = when {
+            s.contains("IPTIME") || s.contains("IP_TIME") -> "ipTIME 공유기"
+            s.contains("MYLGNET") || s.contains("MYLG") || s.contains("U+NET") ||
+                s.contains("U+_") || s.contains("LG_UPLUS") || s.contains("UPLUS") ->
+                "LG유플러스 공유기"
+            s.contains("SKB") || s.contains("SK_WIFI") || s.contains("SKT_WIFI") ->
+                "SK브로드밴드 공유기"
+            s.contains("KT_GIGA") || s.contains("KT_WLAN") || s.contains("KT_WIFI") ||
+                s.contains("OLLEH") -> "KT 공유기"
+            s.contains("IPHONE") -> "아이폰 핫스팟"
+            s.contains("SM-") || s.contains("GALAXY") || s.contains("갤럭시") -> "갤럭시 핫스팟"
+            s.contains("DIRECT-") -> "기기 직결(Wi-Fi Direct)"
+            s.contains("TP-LINK") || s.contains("TPLINK") -> "TP-Link 공유기"
+            s.contains("TOTOLINK") -> "TOTOLINK 공유기"
+            s.contains("CCTV") || s.contains("IPCAM") || s.contains("IP CAM") -> "CCTV·IP카메라"
+            s.contains("PRINTER") || s.contains("EPSON") || s.contains("BROTHER") -> "프린터"
+            s.contains("TESLA") -> "테슬라 차량"
+            else -> null
+        }
+        if (byName != null) return byName
+
+        val v = vendor?.lowercase() ?: return null
+        return when {
+            v.contains("apple") -> "애플 기기(맥·아이폰 핫스팟)"
+            v.contains("samsung") -> "삼성 기기(폰·TV·가전)"
+            v.contains("efm networks") -> "ipTIME 공유기"
+            v.contains("tp-link") -> "TP-Link 공유기"
+            v.contains("lg electronics") -> "LG 기기"
+            else -> null
+        }
+    }
+
+    fun wifiSecurity(capabilities: String): String = when {
+        capabilities.contains("WPA3") -> "WPA3"
+        capabilities.contains("WPA2") -> "WPA2"
+        capabilities.contains("WPA") -> "WPA"
+        capabilities.contains("WEP") -> "WEP(구형·취약)"
+        else -> "개방(비밀번호 없음)"
+    }
+
+    fun bandOf(frequencyMhz: Int): String = when {
+        frequencyMhz in 2400..2500 -> "2.4GHz"
+        frequencyMhz in 4900..5930 -> "5GHz"
+        frequencyMhz > 5930 -> "6GHz"
+        else -> "${frequencyMhz}MHz"
+    }
+
+    fun channelOf(frequencyMhz: Int): Int? = when {
+        frequencyMhz == 2484 -> 14
+        frequencyMhz in 2412..2472 -> (frequencyMhz - 2407) / 5
+        frequencyMhz in 5000..5900 -> (frequencyMhz - 5000) / 5
+        frequencyMhz >= 5955 -> (frequencyMhz - 5950) / 5
+        else -> null
+    }
+
+    // ------------------------------------------------------------------ Cells
+
+    fun carrierFromMccMnc(mcc: String?, mnc: String?): String? {
+        if (mcc.isNullOrBlank() || mnc.isNullOrBlank()) return null
+        return when (mcc + mnc) {
+            "45005" -> "SK텔레콤"
+            "45008" -> "KT"
+            "45006" -> "LG유플러스"
+            else -> null
+        }
+    }
+
+    fun lteBandLabel(bands: IntArray?): String? {
+        val band = bands?.firstOrNull() ?: return null
+        if (band <= 0) return null
+        return "B$band"
+    }
+
+    // ------------------------------------------------------- Strength / range
+
+    /**
+     * Rough distance in metres from an RSSI reading, using the standard log-distance
+     * path loss model. Phone antennas and walls make this an estimate, not a measurement.
+     */
+    fun distanceMeters(rssi: Int, source: SignalSource): Double? {
+        val (reference, exponent) = when (source) {
+            SignalSource.BLE -> -59 to 2.0
+            SignalSource.WIFI -> -42 to 2.4
+            SignalSource.CELL -> return null
+        }
+        return 10.0.pow((reference - rssi) / (10.0 * exponent))
+    }
+
+    fun distanceLabel(rssi: Int, source: SignalSource): String? {
+        val d = distanceMeters(rssi, source) ?: return null
+        return when {
+            d < 0.6 -> "50cm 이내"
+            d < 1.5 -> "약 1m"
+            d < 3.5 -> "약 2~3m"
+            d < 7.0 -> "약 5m"
+            d < 13.0 -> "약 10m"
+            d < 22.0 -> "약 15m"
+            d < 40.0 -> "약 30m"
+            else -> "30m 이상"
+        }
+    }
+
+    /** 0..100 for the little strength bar. */
+    fun strengthPercent(rssi: Int, source: SignalSource): Int {
+        val (weak, strong) = when (source) {
+            SignalSource.BLE -> -95 to -55
+            SignalSource.WIFI -> -92 to -45
+            SignalSource.CELL -> -120 to -80
+        }
+        val ratio = (rssi - weak).toFloat() / (strong - weak).toFloat()
+        return (ratio.coerceIn(0f, 1f) * 100f).toInt()
+    }
+}

@@ -1,0 +1,131 @@
+package com.jihun.signalradar
+
+import android.content.res.ColorStateList
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.RecyclerView
+import com.jihun.signalradar.identify.Classifier
+import com.jihun.signalradar.model.Signal
+import com.jihun.signalradar.model.SignalSource
+
+class SignalAdapter(
+    private val onClick: (Signal) -> Unit
+) : RecyclerView.Adapter<SignalAdapter.Holder>() {
+
+    private val items = ArrayList<Signal>()
+
+    init {
+        setHasStableIds(true)
+    }
+
+    fun submit(list: List<Signal>) {
+        items.clear()
+        items.addAll(list)
+        notifyDataSetChanged()
+    }
+
+    override fun getItemCount(): Int = items.size
+
+    override fun getItemId(position: Int): Long = items[position].id.hashCode().toLong()
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_signal, parent, false)
+        return Holder(view)
+    }
+
+    override fun onBindViewHolder(holder: Holder, position: Int) {
+        holder.bind(items[position])
+    }
+
+    inner class Holder(view: View) : RecyclerView.ViewHolder(view) {
+
+        private val icon: ImageView = view.findViewById(R.id.itemIcon)
+        private val title: TextView = view.findViewById(R.id.itemTitle)
+        private val vendor: TextView = view.findViewById(R.id.itemVendor)
+        private val detail: TextView = view.findViewById(R.id.itemDetail)
+        private val address: TextView = view.findViewById(R.id.itemAddress)
+        private val rssi: TextView = view.findViewById(R.id.itemRssi)
+        private val distance: TextView = view.findViewById(R.id.itemDistance)
+        private val bar: View = view.findViewById(R.id.itemBarFill)
+        private val badgeNew: TextView = view.findViewById(R.id.itemBadgeNew)
+        private val badgeBoost: TextView = view.findViewById(R.id.itemBadgeBoost)
+
+        init {
+            view.setOnClickListener { onPositionClicked() }
+        }
+
+        private fun onPositionClicked() {
+            val position = bindingAdapterPosition
+            if (position == RecyclerView.NO_POSITION) return
+            onClick(items[position])
+        }
+
+        fun bind(signal: Signal) {
+            val context = itemView.context
+
+            title.text = signal.title
+            vendor.text = signal.vendor ?: unknownVendor(signal)
+            detail.text = signal.detail ?: signal.source.label
+            address.text = signal.source.label + " · " + signal.address
+
+            when (signal.source) {
+                SignalSource.BLE -> {
+                    icon.setImageResource(R.drawable.ic_ble)
+                    icon.imageTintList = ColorStateList.valueOf(
+                        ContextCompat.getColor(context, R.color.accent)
+                    )
+                }
+                SignalSource.WIFI -> {
+                    icon.setImageResource(R.drawable.ic_wifi)
+                    icon.imageTintList = ColorStateList.valueOf(
+                        ContextCompat.getColor(context, R.color.green)
+                    )
+                }
+                SignalSource.CELL -> {
+                    icon.setImageResource(R.drawable.ic_cell)
+                    icon.imageTintList = ColorStateList.valueOf(
+                        ContextCompat.getColor(context, R.color.purple)
+                    )
+                }
+            }
+
+            badgeNew.visibility = if (signal.isNew) View.VISIBLE else View.GONE
+            badgeBoost.visibility = if (signal.isBoosted) View.VISIBLE else View.GONE
+
+            val percent = Classifier.strengthPercent(signal.rssi, signal.source)
+            val strengthColor = when {
+                percent >= 65 -> R.color.green
+                percent >= 35 -> R.color.amber
+                else -> R.color.red
+            }
+            rssi.text = signal.rssi.toString()
+            rssi.setTextColor(ContextCompat.getColor(context, strengthColor))
+
+            val trackWidth = context.resources.displayMetrics.density * 46f
+            val fillWidth = (trackWidth * percent / 100f).toInt().coerceAtLeast(
+                (context.resources.displayMetrics.density * 3f).toInt()
+            )
+            val params = bar.layoutParams
+            params.width = fillWidth
+            bar.layoutParams = params
+            bar.backgroundTintList = ColorStateList.valueOf(
+                ContextCompat.getColor(context, strengthColor)
+            )
+
+            distance.text = Classifier.distanceLabel(signal.rssi, signal.source) ?: "기지국"
+        }
+
+        private fun unknownVendor(signal: Signal): String {
+            return when (signal.source) {
+                SignalSource.BLE -> "제조사 미확인"
+                SignalSource.WIFI -> "제조사 미확인"
+                SignalSource.CELL -> "통신사 미확인"
+            }
+        }
+    }
+}

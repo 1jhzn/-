@@ -1,0 +1,51 @@
+name: Build Android APK
+
+# 안드로이드 앱 소스가 바뀌면 자동으로, 또는 GitHub 화면에서 직접 실행(Run workflow)하면
+# 디버그 APK를 만들어 Artifact로 올려 줍니다.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'android-signal-app/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: assembleDebug
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android-signal-app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-34 build-tools;34.0.0'
+
+      - name: Set up Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: signal-detector-debug-apk
+          path: android-signal-app/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

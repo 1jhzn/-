@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#070B10</color>
+    <color name="surface">#0D141D</color>
+    <color name="card">#121B26</color>
+    <color name="card_alt">#16202C</color>
+    <color name="stroke">#1F2C3B</color>
+
+    <color name="accent">#2ED3C6</color>
+    <color name="accent_dim">#1B4A47</color>
+    <color name="accent_soft">#123B3A</color>
+
+    <color name="green">#34D399</color>
+    <color name="amber">#FBBF24</color>
+    <color name="orange">#FB923C</color>
+    <color name="red">#F87171</color>
+    <color name="red_dim">#7F1D1D</color>
+    <color name="red_soft">#2A1315</color>
+    <color name="purple">#A78BFA</color>
+
+    <color name="text_primary">#E9F1F8</color>
+    <color name="text_secondary">#93A4B8</color>
+    <color name="text_muted">#63748A</color>
+
+    <color name="button_on_primary">#04211F</color>
+    <color name="ic_launcher_bg">#0B1220</color>
+</resources>

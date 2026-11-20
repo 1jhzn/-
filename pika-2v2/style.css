@@ -106,7 +106,7 @@ body.landscape .stick-hint{display:none}
 /* ================= 오버레이(로비/방/결과) ================= */
 .overlay{position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
   padding:max(10px,env(safe-area-inset-top)) 12px max(10px,env(safe-area-inset-bottom));
-  background:radial-gradient(circle at 50% 0%,rgba(56,189,248,.28),rgba(8,15,30,.94) 60%),#0b1220;
+  background:radial-gradient(circle at 50% 0%,rgba(56,189,248,.26),rgba(8,15,30,.86) 62%),rgba(11,18,32,.9);
   overflow-y:auto;touch-action:pan-y;overscroll-behavior:contain}
 .card{width:100%;max-width:400px;background:linear-gradient(180deg,#16233b,#0e1729);
   border:1px solid rgba(148,163,184,.32);border-radius:22px;padding:18px 16px;margin:auto;

@@ -1,0 +1,64 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.jihun.pikabrawl"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="34" />
+10
+11    <!-- 온라인 대전(MQTT WebSocket)에만 인터넷을 쓴다 -->
+12    <uses-permission android:name="android.permission.INTERNET" />
+12-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:5:5-67
+12-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:5:22-64
+13    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+13-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:6:5-79
+13-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:6:22-76
+14
+15    <application
+15-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:8:5-29:19
+16        android:allowBackup="true"
+16-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:9:9-35
+17        android:debuggable="true"
+18        android:extractNativeLibs="false"
+19        android:hardwareAccelerated="true"
+19-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:12:9-43
+20        android:icon="@drawable/ic_launcher"
+20-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:10:9-45
+21        android:label="@string/app_name"
+21-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:11:9-41
+22        android:supportsRtl="false"
+22-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:13:9-36
+23        android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
+23-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:15:9-77
+24        android:usesCleartextTraffic="false" >
+24-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:14:9-45
+25        <activity
+25-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:17:9-28:20
+26            android:name="com.jihun.pikabrawl.MainActivity"
+26-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:18:13-41
+27            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|uiMode|density|navigation"
+27-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:23:13-141
+28            android:exported="true"
+28-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:19:13-36
+29            android:launchMode="singleTask"
+29-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:21:13-44
+30            android:resizeableActivity="true"
+30-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:22:13-46
+31            android:screenOrientation="fullSensor" >
+31-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:20:13-51
+32            <intent-filter>
+32-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:24:13-27:29
+33                <action android:name="android.intent.action.MAIN" />
+33-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:25:17-69
+33-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:25:25-66
+34
+35                <category android:name="android.intent.category.LAUNCHER" />
+35-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:26:17-77
+35-->/workspace/omok-game/android-pika-brawl/app/src/main/AndroidManifest.xml:26:27-74
+36            </intent-filter>
+37        </activity>
+38    </application>
+39
+40</manifest>

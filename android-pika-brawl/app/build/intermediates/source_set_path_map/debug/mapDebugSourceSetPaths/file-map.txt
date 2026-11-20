@@ -1,0 +1,7 @@
+com.jihun.pikabrawl.app-pngs-0 /workspace/omok-game/android-pika-brawl/app/build/generated/res/pngs/debug
+com.jihun.pikabrawl.app-resValues-1 /workspace/omok-game/android-pika-brawl/app/build/generated/res/resValues/debug
+com.jihun.pikabrawl.app-packageDebugResources-2 /workspace/omok-game/android-pika-brawl/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.jihun.pikabrawl.app-packageDebugResources-3 /workspace/omok-game/android-pika-brawl/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.jihun.pikabrawl.app-debug-4 /workspace/omok-game/android-pika-brawl/app/build/intermediates/merged_res/debug/mergeDebugResources
+com.jihun.pikabrawl.app-debug-5 /workspace/omok-game/android-pika-brawl/app/src/debug/res
+com.jihun.pikabrawl.app-main-6 /workspace/omok-game/android-pika-brawl/app/src/main/res

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="court_bg">#140B26</color>
+    <string name="app_name">피카츄 브롤 배구</string>
+</resources>

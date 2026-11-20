@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>⚡ 피카츄 배구 2 vs 2</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+
+  <!-- ===== 인게임 HUD ===== -->
+  <div id="hud" class="hidden">
+    <div id="scorebar">
+      <div class="tm blue"><i></i><span id="nb">파랑</span><b id="sb-blue">0</b></div>
+      <div class="vs">:</div>
+      <div class="tm red"><b id="sb-red">0</b><span id="nr">빨강</span><i></i></div>
+    </div>
+    <div id="hud-btns">
+      <button id="btn-sound" class="ico" aria-label="소리">🔊</button>
+      <button id="btn-exit" class="ico" aria-label="나가기">✕</button>
+    </div>
+    <div id="roster-mini"></div>
+    <div id="toast"></div>
+    <div id="center-msg"></div>
+  </div>
+
+  <!-- ===== 터치 조작 ===== -->
+  <div id="controls" class="hidden">
+    <div id="stick" aria-label="이동">
+      <div class="stick-base"><div class="stick-knob" id="knob"></div></div>
+      <div class="stick-hint">이동</div>
+    </div>
+    <div id="actions">
+      <button class="abtn jump" id="b-jump" aria-label="점프"><span>▲</span><small>점프</small></button>
+      <button class="abtn dive" id="b-dive" aria-label="슬라이딩 다이빙"><span>🏃</span><small>다이빙</small><i class="cd"></i></button>
+      <button class="abtn feint" id="b-feint" aria-label="페인트 드롭샷"><span>🎯</span><small>페인트</small><i class="cd"></i></button>
+      <button class="abtn smash" id="b-smash" aria-label="번개 강스매시"><span>⚡</span><small>강스매시</small><i class="cd"></i></button>
+    </div>
+  </div>
+
+  <!-- ===== 로비 ===== -->
+  <div id="lobby" class="overlay">
+    <div class="card">
+      <div class="brand">⚡ 피카츄 배구 <em>2 vs 2</em></div>
+      <div class="sub">캐릭터·스킬은 원작 그대로, 모바일 팀전</div>
+
+      <label class="field"><span>닉네임</span><input id="nick" value="지훈" maxlength="6" autocomplete="off"></label>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="ai">🤖 AI 대전</button>
+        <button class="tab" data-tab="online">🌐 온라인 방</button>
+      </div>
+
+      <!-- AI 패널 -->
+      <div class="panel" id="panel-ai">
+        <div class="sec">
+          <h3>팀 인원</h3>
+          <div class="seg" id="seg-size-ai">
+            <button data-size="2" class="on">2 vs 2</button>
+            <button data-size="1">1 vs 1</button>
+          </div>
+        </div>
+        <div class="sec">
+          <h3>난이도</h3>
+          <div class="seg" id="seg-diff">
+            <button data-diff="easy">쉬움</button>
+            <button data-diff="normal" class="on">보통</button>
+            <button data-diff="hard">어려움</button>
+          </div>
+        </div>
+        <button class="go" id="btn-ai-start">게임 시작</button>
+      </div>
+
+      <!-- 온라인 패널 -->
+      <div class="panel hidden" id="panel-online">
+        <div class="sec">
+          <h3>팀 인원</h3>
+          <div class="seg" id="seg-size-online">
+            <button data-size="2" class="on">2 vs 2</button>
+            <button data-size="1">1 vs 1</button>
+          </div>
+        </div>
+        <button class="go" id="btn-create">🔧 방 만들기 (2 vs 2)</button>
+        <div class="join">
+          <input id="join-code" inputmode="numeric" maxlength="4" placeholder="방 코드 4자리" autocomplete="off">
+          <button id="btn-join">입장</button>
+        </div>
+        <p class="hint">친구와 1 vs 1 · 2 vs 2 대전. 빈 자리는 AI가 자동으로 채워요.</p>
+        <p class="hint warn" id="net-hint"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 대기방 ===== -->
+  <div id="room" class="overlay hidden">
+    <div class="card">
+      <div class="roomhead">
+        <button id="btn-room-leave" class="ico sm" aria-label="나가기">←</button>
+        <div class="rcode">방 코드 <b id="room-code">----</b></div>
+        <button id="btn-copy" class="mini">🔗 링크 복사</button>
+      </div>
+      <div class="teams">
+        <div class="tcol blue">
+          <h4>🔵 파랑팀 <span id="cnt-blue">0/2</span></h4>
+          <ul id="list-blue"></ul>
+        </div>
+        <div class="tcol red">
+          <h4>🔴 빨강팀 <span id="cnt-red">0/2</span></h4>
+          <ul id="list-red"></ul>
+        </div>
+      </div>
+      <div class="sec">
+        <h3>팀 인원</h3>
+        <div class="seg" id="seg-size-room">
+          <button data-size="2" class="on">2 vs 2</button>
+          <button data-size="1">1 vs 1</button>
+        </div>
+      </div>
+      <button class="go" id="btn-room-start">게임 시작</button>
+      <div class="hint" id="room-wait">호스트가 시작하기를 기다리는 중…</div>
+      <div class="hint" id="room-hint">친구에게 코드를 알려 주세요. 빈 자리는 AI가 채웁니다.</div>
+      <div class="copy-toast" id="copy-toast">복사 완료! 친구에게 보내세요</div>
+    </div>
+  </div>
+
+  <!-- ===== 결과 ===== -->
+  <div id="result" class="overlay hidden">
+    <div class="card small">
+      <h2 id="res-title">승리! 🎉</h2>
+      <div class="res-score" id="res-score">7 : 4</div>
+      <p id="res-desc">경기 종료</p>
+      <button class="go" id="btn-again">한 판 더</button>
+      <button class="mini wide" id="btn-back">로비로</button>
+    </div>
+  </div>
+</div>
+
+<script src="paho-mqtt.js"></script>
+<script src="game.js?v=1"></script>
+</body>
+</html>

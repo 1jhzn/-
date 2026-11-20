@@ -138,7 +138,7 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
-                android:text="🔔 진동 켜짐"
+                android:text="📳 진동 켜짐"
                 android:textColor="#0A2B18"
                 android:textSize="11.5sp"
                 android:textStyle="bold" />

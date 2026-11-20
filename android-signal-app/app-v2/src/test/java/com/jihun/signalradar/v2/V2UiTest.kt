@@ -113,15 +113,15 @@ class V2UiTest {
     // ------------------------------------------------------------- app identity
 
     @Test
-    fun it_is_a_separate_app_with_its_own_package_name_and_the_22_version() {
+    fun it_is_a_separate_app_with_its_own_package_name_and_the_23_version() {
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
         assertEquals("com.jihun.signalradar.v2", activity.packageName)
         assertEquals("전파 감지기 v2", activity.getString(R.string.app_name_v2))
 
         val info = activity.packageManager.getPackageInfo(activity.packageName, 0)
-        assertEquals("2.2", info.versionName)
-        assertEquals(3, info.versionCode)
+        assertEquals("2.3", info.versionName)
+        assertEquals(4, info.versionCode)
         controller.pause().stop().destroy()
     }
 
@@ -224,9 +224,10 @@ class V2UiTest {
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
         val root = activity.findViewById<View>(android.R.id.content)
-        val chips = listOf(
-            R.id.chipAll, R.id.chipNew, R.id.chipBle, R.id.chipWifi, R.id.chipCell
-        )
+        // v2.3 is Bluetooth only: 전체 · 🚨 새 신호 · 📌 내 폰 연결.
+        val chips = listOf(R.id.chipAll, R.id.chipNew, R.id.chipBle)
+        repoOf(activity).upsert(listOf(bleSignal(), bleSignal(address = "AA:BB:CC:DD:EE:FF")))
+        refresh()
 
         for (widthDp in listOf(320, 360, 412)) {
             measure(root, activity, widthDp, 780)
@@ -244,6 +245,111 @@ class V2UiTest {
                 )
             }
         }
+
+        // The radios this screen no longer shows have no chip to press.
+        assertEquals(View.GONE, activity.findViewById<View>(R.id.chipWifi).visibility)
+        assertEquals(View.GONE, activity.findViewById<View>(R.id.chipCell).visibility)
+        controller.pause().stop().destroy()
+    }
+
+    @Test
+    fun the_chip_row_counts_bluetooth_and_offers_my_own_devices() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        val repo = repoOf(activity)
+        repo.upsert(
+            listOf(
+                bleSignal(),
+                bleSignal(address = "AA:BB:CC:DD:EE:FF", title = "민수의 Galaxy Buds"),
+                bleSignal(address = "02:00:00:00:00:01", title = "이름 없는 기기").copy(
+                    isConnected = false,
+                    isBonded = false
+                )
+            )
+        )
+        refresh()
+
+        assertEquals("전체 3", activity.findViewById<TextView>(R.id.chipAll).text.toString())
+        assertEquals("📌 내 폰 연결 2", activity.findViewById<TextView>(R.id.chipBle).text.toString())
+
+        // Pressing it narrows the list to the two devices paired with this phone.
+        activity.findViewById<View>(R.id.chipBle).performClick()
+        refresh()
+        assertEquals(2, activity.findViewById<RecyclerView>(R.id.v2SignalList).adapter?.itemCount)
+        activity.findViewById<View>(R.id.chipAll).performClick()
+        refresh()
+        assertEquals(3, activity.findViewById<RecyclerView>(R.id.v2SignalList).adapter?.itemCount)
+        controller.pause().stop().destroy()
+    }
+
+    @Test
+    fun wifi_and_base_stations_are_neither_read_nor_shown() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        val repo = repoOf(activity)
+        val cell = bleSignal(address = "10:20:30:40:50:60", title = "LTE 기지국").copy(
+            id = "cell:lte:1234:56",
+            source = SignalSource.CELL,
+            address = "1234",
+            vendor = "SKT",
+            kind = "LTE 기지국"
+        )
+        repo.upsert(listOf(bleSignal(), wifiSignal(), cell))
+        refresh()
+
+        // The list is Bluetooth only.
+        val list = activity.findViewById<RecyclerView>(R.id.v2SignalList)
+        assertEquals(1, list.adapter?.itemCount)
+
+        // The radar sees the same list, and the counter says so.
+        activity.findViewById<View>(R.id.tabNearby).performClick()
+        refresh()
+        assertEquals(1, activity.findViewById<RecyclerView>(R.id.nearbyList).adapter?.itemCount)
+        assertEquals(
+            "10m 안에 잡힌 기기 1개",
+            activity.findViewById<TextView>(R.id.nearbyCount).text.toString()
+        )
+
+        // A 기준 saved now holds the Bluetooth device and nothing else.
+        activity.findViewById<View>(R.id.tabRecord).performClick()
+        saveBaseline(activity, "우리 집")
+        assertEquals(1, repo.baselineSize())
+        assertEquals("기기 1개", activity.findViewById<TextView>(R.id.v2RecordCount).text.toString())
+
+        // The Wi-Fi device is not in the 기준, so the repository itself flags it — but the
+        // screen must never show it: no banner, and the 🚨 chip stays empty.
+        assertTrue(
+            "the repository is allowed to know about it",
+            repo.snapshot().any { it.source == SignalSource.WIFI && it.isNew }
+        )
+        assertEquals(View.GONE, activity.findViewById<View>(R.id.alertBanner).visibility)
+        assertEquals("🚨 새 신호", activity.findViewById<TextView>(R.id.chipNew).text.toString())
+        assertEquals("전체 1", activity.findViewById<TextView>(R.id.chipAll).text.toString())
+        controller.pause().stop().destroy()
+    }
+
+    @Test
+    fun a_wifi_or_cell_line_saved_by_v22_is_dropped_from_the_baseline() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        val repo = repoOf(activity)
+
+        // What v2.2 left behind: one 기준 with a Bluetooth device, a Wi-Fi and a base station.
+        val store = V2BaselineStore(activity)
+        val item = store.add(
+            "지난 기준",
+            mapOf(
+                "ble:F8:1E:DF:12:34:56" to -50,
+                "wifi:00:08:9F:00:00:01" to -62,
+                "cell:lte:1234:56" to -90
+            )
+        )
+        assertEquals("only the Bluetooth line is kept", 1, item.size)
+        store.applyActiveTo(repo)
+        assertEquals(1, repo.baselineSize())
         controller.pause().stop().destroy()
     }
 
@@ -376,7 +482,7 @@ class V2UiTest {
     // --------------------------------------------------------------- the list
 
     @Test
-    fun the_v2_list_shows_the_scanned_signals_with_their_steps() {
+    fun the_v2_list_shows_the_scanned_bluetooth_signals_with_their_steps() {
         grantScanPermissions()
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
@@ -385,7 +491,7 @@ class V2UiTest {
         refresh()
 
         val list = activity.findViewById<RecyclerView>(R.id.v2SignalList)
-        assertEquals(2, list.adapter?.itemCount)
+        assertEquals("the Wi-Fi access point is not on a Bluetooth-only screen", 1, list.adapter?.itemCount)
 
         // The nearest signal is the one the top callout offers to find.
         val title = activity.findViewById<TextView>(R.id.v2CalloutTitle)
@@ -523,6 +629,84 @@ class V2UiTest {
         controller.pause().stop().destroy()
     }
 
+    // ------------------------------------------------- finder haptics (v2.3)
+
+    @Test
+    fun the_finder_shows_the_haptic_step_and_its_switch_and_buzzes_nearer() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(listOf(bleSignal(rssi = -44, smoothed = -44f)))
+        refresh()
+        activity.findViewById<View>(R.id.v2Callout).performClick()
+        refresh()
+
+        // Close: the button says so, and the motor has already tapped.
+        val button = activity.findViewById<TextView>(R.id.orbVibrate)
+        assertEquals("📳 진동 5/5단계", button.text.toString())
+        assertTrue("the finder must have tapped", (activity.orbHapticsForTest()?.taps ?: 0) >= 1)
+
+        // The switch: off is silent at once and stays off in the saved setting.
+        button.performClick()
+        assertEquals("🔕 진동 꺼짐", button.text.toString())
+        assertEquals(0, activity.orbHapticsForTest()?.taps)
+        assertFalse(
+            activity.getSharedPreferences("signal_radar", android.content.Context.MODE_PRIVATE)
+                .getBoolean(V2RadarActivity.KEY_ORB_HAPTICS, true)
+        )
+        button.performClick()
+        assertTrue(button.text.toString().startsWith("📳 진동"))
+
+        // Leaving the finder (닫기, or the app going to the background) silences the motor.
+        activity.findViewById<View>(R.id.orbClose).performClick()
+        assertEquals(0, activity.orbHapticsForTest()?.band)
+        assertEquals(0, activity.orbHapticsForTest()?.taps)
+        controller.pause().stop().destroy()
+    }
+
+    @Test
+    fun a_far_signal_keeps_the_finder_quiet_and_says_so() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(
+            listOf(
+                bleSignal(
+                    rssi = -95,
+                    smoothed = -95f,
+                    address = "02:00:00:00:00:99",
+                    title = "멀리 있는 기기"
+                )
+            )
+        )
+        refresh()
+        activity.findViewById<View>(R.id.v2Callout).performClick()
+        refresh()
+
+        // -95 dBm is out of reach: the switch is on, but nothing buzzes.
+        assertEquals("📳 진동 켜짐", activity.findViewById<TextView>(R.id.orbVibrate).text.toString())
+        assertEquals(0, activity.orbHapticsForTest()?.band)
+        assertEquals(0, activity.orbHapticsForTest()?.taps)
+        controller.pause().stop().destroy()
+    }
+
+    @Test
+    fun pausing_the_finder_stops_the_buzz() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(listOf(bleSignal(rssi = -52, smoothed = -52f)))
+        refresh()
+        activity.findViewById<View>(R.id.v2Callout).performClick()
+        refresh()
+        assertTrue((activity.orbHapticsForTest()?.taps ?: 0) >= 1)
+
+        controller.pause()
+        assertEquals("nothing may buzz once the screen is paused", 0, activity.orbHapticsForTest()?.band)
+        assertEquals(0, activity.orbHapticsForTest()?.taps)
+        controller.stop().destroy()
+    }
+
     @Test
     fun back_closes_the_orb_before_it_leaves_the_app() {
         grantScanPermissions()
@@ -547,7 +731,12 @@ class V2UiTest {
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
         val repo = repoOf(activity)
-        repo.upsert(listOf(bleSignal(), wifiSignal()))
+        repo.upsert(
+            listOf(
+                bleSignal(),
+                bleSignal(address = "AA:BB:CC:DD:EE:FF", title = "민수의 Galaxy Buds", rssi = -74)
+            )
+        )
         saveBaseline(activity, "우리 집")
         refresh()
 

@@ -84,19 +84,11 @@ class V2BaselineTabTest {
         isBonded = true
     )
 
-    private fun wifiSignal(ssid: String = "iptime_5G", rssi: Int = -62) = Signal(
-        id = "wifi:$ssid",
-        source = SignalSource.WIFI,
-        title = ssid,
-        vendor = "ipTIME(EFM)",
-        kind = "ipTIME 공유기",
-        detail = "5GHz · 44채널",
-        address = "00:08:9F:00:00:01",
-        rssi = rssi,
-        firstSeen = System.currentTimeMillis() - 30_000,
-        lastSeen = System.currentTimeMillis(),
-        smoothedRssi = rssi.toFloat(),
-        frequencyMhz = 5745
+    /** A second Bluetooth device, so a 기준 holds more than one row (v2.3 is Bluetooth only). */
+    private fun budsSignal(rssi: Int = -74) = bleSignal(
+        address = "AA:BB:CC:DD:EE:FF",
+        title = "민수의 Galaxy Buds",
+        rssi = rssi
     )
 
     private fun repoOf(activity: V2RadarActivity): SignalRepository {
@@ -146,7 +138,7 @@ class V2BaselineTabTest {
 
         repo.upsert(listOf(bleSignal()))
         save(activity, "우리 집")
-        repo.upsert(listOf(wifiSignal()))
+        repo.upsert(listOf(budsSignal()))
         save(activity, "복도")
         open(activity, R.id.tabRecord)
 
@@ -217,7 +209,7 @@ class V2BaselineTabTest {
 
         repo.upsert(listOf(bleSignal()))
         save(activity, "우리 집")
-        repo.upsert(listOf(wifiSignal()))
+        repo.upsert(listOf(budsSignal()))
         save(activity, "복도")
 
         // 복도 holds both devices, so nothing is new while it is in use.
@@ -253,7 +245,7 @@ class V2BaselineTabTest {
         val activity = controller.get()
         repoOf(activity).upsert(listOf(bleSignal()))
         save(activity, "우리 집")
-        repoOf(activity).upsert(listOf(wifiSignal()))
+        repoOf(activity).upsert(listOf(budsSignal()))
         save(activity, "복도")
         open(activity, R.id.tabRecord)
         cards(activity)[1].performClick()
@@ -378,7 +370,7 @@ class V2BaselineTabTest {
         val repo = repoOf(activity)
         repo.upsert(listOf(bleSignal()))
         save(activity, "우리 집")
-        repo.upsert(listOf(wifiSignal()))
+        repo.upsert(listOf(budsSignal()))
         save(activity, "복도")
         open(activity, R.id.tabRecord)
 

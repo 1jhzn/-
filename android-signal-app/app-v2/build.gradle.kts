@@ -16,6 +16,11 @@ plugins {
  * v2.2 adds the 기준 tab's list: several named baselines, one in use, each renameable and
  * deletable, plus `🧹 기준 초기화` (see [com.jihun.signalradar.v2.V2BaselineStore]).
  *
+ * v2.3 answers two more requests from 지훈 ("와이파이랑 기지국 안보게해주고 가까워질수록소리크게해줘",
+ * then "진동만 크게해줘"): the screen is Bluetooth only — Wi-Fi and base stations are neither
+ * scanned nor drawn anywhere — and the finder buzzes harder and faster the closer the signal
+ * is, with its own 진동 switch, instead of playing a sound.
+ *
  * Both tabs are here in one app (📏 거리 + 📡 내 주변 10m 레이더), and the UI is the v2 pass:
  * the empty state sits at the top of the list, the scan button reads 스캔 중지 while scanning,
  * the filter chips wrap onto two rows instead of being cut off, a card is a title plus one
@@ -33,8 +38,8 @@ android {
         applicationId = "com.jihun.signalradar.v2"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "2.2"
+        versionCode = 4
+        versionName = "2.3"
     }
 
     sourceSets {

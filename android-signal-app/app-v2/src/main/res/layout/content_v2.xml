@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- v2.1 신호 page, inside the white sheet: the new-signal banner, the permission notice, a
-     small counter strip, the two-row filter chips and the signal list.
+<!-- v2.3 신호 page, inside the white sheet: the new-signal banner, the permission notice,
+     a small counter strip, the Bluetooth filter chips and the signal list.
 
-     The empty-state text sits at the TOP of the list area (지훈: 빈 화면 문구는 위로), and the
-     chips are on two rows so nothing is cut off at 320–360dp. -->
+     The empty-state text sits at the TOP of the list area (지훈: 빈 화면 문구는 위로). Since
+     v2.3 the screen is Bluetooth only, so the chips fit on one row even at 320dp. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -107,7 +107,10 @@
         android:layout_height="1dp"
         android:visibility="gone" />
 
-    <!-- ===== filters: two rows, so every chip's text is whole on a 320dp phone ===== -->
+    <!-- ===== filters: Bluetooth only (v2.3) — 전체 · 🚨 새 신호 · 📌 내 폰 연결 =====
+         The Wi-Fi and 기지국 chips are gone with the radios they filtered (지훈: "와이파이랑
+         기지국 안보게해주고"). Two holders are left so the shared screen class still finds
+         every id it wires, and they never take room on the screen. -->
     <LinearLayout
         android:id="@+id/chipRow"
         android:layout_width="match_parent"
@@ -161,46 +164,24 @@
                 android:gravity="center"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
-                android:text="블루투스"
+                android:text="📌 내 폰 연결"
                 android:textColor="@color/v2_ink_soft"
                 android:textSize="12sp" />
-        </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/chipRowBottom"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:orientation="horizontal">
-
+            <!-- the radios this screen no longer has: kept for the shared class, never drawn -->
             <TextView
                 android:id="@+id/chipWifi"
-                android:layout_width="wrap_content"
-                android:layout_height="29dp"
-                android:background="@drawable/bg_v2_chip"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
+                android:layout_width="1dp"
+                android:layout_height="1dp"
                 android:text="와이파이"
-                android:textColor="@color/v2_ink_soft"
-                android:textSize="12sp" />
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/chipCell"
-                android:layout_width="wrap_content"
-                android:layout_height="29dp"
-                android:layout_marginStart="6dp"
-                android:background="@drawable/bg_v2_chip"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
+                android:layout_width="1dp"
+                android:layout_height="1dp"
                 android:text="기지국"
-                android:textColor="@color/v2_ink_soft"
-                android:textSize="12sp" />
+                android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
 

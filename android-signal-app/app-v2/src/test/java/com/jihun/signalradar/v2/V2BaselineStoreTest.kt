@@ -51,7 +51,7 @@ class V2BaselineStoreTest {
     @Test
     fun a_saved_baseline_keeps_the_name_it_was_given() {
         val store = store()
-        val item = store.add("우리 집", devices("ble:a", "wifi:b"), savedAt = 1_000L)
+        val item = store.add("우리 집", devices("ble:a", "ble:b"), savedAt = 1_000L)
 
         assertEquals("우리 집", item.name)
         assertEquals(2, item.size)
@@ -193,14 +193,14 @@ class V2BaselineStoreTest {
     @Test
     fun the_list_and_the_one_in_use_survive_the_app_being_closed() {
         val first = store()
-        val home = first.add("우리 집", devices("ble:a", "wifi:b"))
+        val home = first.add("우리 집", devices("ble:a", "ble:b"))
         first.add("복도", devices("ble:c"))
         first.setActive(home.id)
 
         val reopened = store()
         assertEquals(listOf("복도", "우리 집"), reopened.all().map { it.name })
         assertEquals("우리 집", reopened.active()?.name)
-        assertEquals(mapOf("ble:a" to -55, "wifi:b" to -55), reopened.find(home.id)?.entries)
+        assertEquals(mapOf("ble:a" to -55, "ble:b" to -55), reopened.find(home.id)?.entries)
     }
 
     // ------------------------------------------------------- the v2.1 upgrade
@@ -241,13 +241,52 @@ class V2BaselineStoreTest {
         assertTrue(reopened.isEmpty())
     }
 
+    // ------------------------------------------------------------ Bluetooth only
+
+    @Test
+    fun a_wifi_or_cell_line_is_never_kept_in_a_baseline() {
+        val store = store()
+        val item = store.add(
+            "우리 집",
+            mapOf(
+                "ble:a" to -50,
+                "wifi:00:08:9F:00:00:01" to -62,
+                "cell:lte:1234:56" to -90
+            )
+        )
+        assertEquals("only Bluetooth is compared", 1, item.size)
+        assertEquals(mapOf("ble:a" to -50), item.entries)
+    }
+
+    @Test
+    fun a_baseline_written_by_v22_drops_its_wifi_and_cell_lines_when_read() {
+        // What the v2.2 file holds: one 기준 with a Bluetooth device, a Wi-Fi and a base station.
+        prefs().edit()
+            .putString(
+                "v2_baselines",
+                """[{"id":"b1","name":"지난 기준","savedAt":1700000000000,
+                   "entries":{"ble:a":-50,"wifi:00:08:9F:00:00:01":-62,"cell:lte:1:2":-90}}]"""
+            )
+            .putString("v2_baselines_active", "b1")
+            .commit()
+
+        val store = store()
+        val item = store.active()!!
+        assertEquals("지난 기준", item.name)
+        assertEquals("the card must count only what is compared", 1, item.size)
+
+        val repo = SignalRepository(context)
+        store.applyActiveTo(repo)
+        assertEquals(1, repo.baselineSize())
+    }
+
     // --------------------------------------------- pushing it to the repository
 
     @Test
     fun the_one_in_use_is_what_the_shared_repository_compares_against() {
         val repo = SignalRepository(context)
         val store = store()
-        val home = store.add("우리 집", mapOf("ble:a" to -40, "wifi:b" to -60))
+        val home = store.add("우리 집", mapOf("ble:a" to -40, "ble:b" to -60))
         store.applyActiveTo(repo)
 
         assertTrue(repo.hasBaseline())

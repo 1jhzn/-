@@ -236,14 +236,6 @@
                             android:text="● 블루투스"
                             android:textColor="@color/v2_blue"
                             android:textSize="10sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:text="● 와이파이"
-                            android:textColor="@color/v2_icon_wifi"
-                            android:textSize="10sp" />
                     </LinearLayout>
                 </FrameLayout>
 

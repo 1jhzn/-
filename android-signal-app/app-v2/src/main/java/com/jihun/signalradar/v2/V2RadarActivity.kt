@@ -1,12 +1,9 @@
 package com.jihun.signalradar.v2
 
 import android.app.Dialog
-import android.content.Context
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -33,7 +30,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * 전파 감지기 v2.2 — the "나의 찾기" (Find My) style screens, still one separately installable
+ * 전파 감지기 v2.3 — the "나의 찾기" (Find My) style screens, still one separately installable
  * app (`com.jihun.signalradar.v2`) that leaves 전파 감지기 and 내 주변 untouched.
  *
  * What this class adds over the shared screen: the pastel top area with the nearest-signal
@@ -45,6 +42,15 @@ import kotlin.math.roundToInt
  * names, one of them in use, each renameable and deletable, and `🧹 기준 초기화` to drop them
  * all. The 기준 in use is what the 🚨 새 신호 check compares against, so switching one is felt
  * immediately.
+ *
+ * v2.3 answers two more requests from 지훈:
+ *
+ *  - "와이파이랑 기지국 안보게해주고": this screen is Bluetooth only. [keepsSource] narrows
+ *    the shared scan, so the list, the chips, the 10 m radar, the 기준 and the finder never
+ *    see Wi-Fi or a base station — and those two radios are not even read.
+ *  - "진동만 크게해줘": the finder buzzes as a metal detector does, harder and faster the
+ *    closer the signal is ([OrbHaptics]), with its own on/off button. Nothing is played out
+ *    loud.
  *
  * Everything that reads radios, keeps the list, spots new signals, folds the MAC address,
  * reads the device name over GATT (0.7 s + ⏹ 읽기 멈추기) and measures the direction is
@@ -75,8 +81,14 @@ class V2RadarActivity : SignalRadarActivity() {
 
     private var lastOrbSeen = 0L
     private var lastOrbRssi = Int.MIN_VALUE
-    private var lastOrbBuzz = 0L
 
+    /** v2.3: the finder's nearness feedback — vibration only, no sound at all. */
+    private var haptics: OrbHaptics? = null
+    private var orbHapticsOn = true
+    private var orbHapticBand = 0
+
+    /** `📌 내 폰 연결`: a v2.3 chip that narrows the list to the devices paired to this phone. */
+    private var mineOnly = false
     private var nearest: Signal? = null
     private var listKey: String? = null
     private var nearbyKey: String? = null
@@ -249,14 +261,24 @@ class V2RadarActivity : SignalRadarActivity() {
         store.applyActiveTo(repo)
         recordKey = null
 
+        // v2.3: the finder's vibration, remembered across launches (on by default).
+        orbHapticsOn = prefs().getBoolean(KEY_ORB_HAPTICS, true)
+        haptics = OrbHaptics.from(this)
+        renderOrbHaptics(null)
+
         tabSignal.setOnClickListener { selectTab(Tab.SIGNALS) }
         tabNearby.setOnClickListener { selectTab(Tab.NEARBY) }
         tabRecord.setOnClickListener { selectTab(Tab.RECORD) }
 
+        // The chips are Bluetooth-only now: 전체 · 🚨 새 신호 · 내 폰 연결.
+        findViewById<TextView>(R.id.chipAll).setOnClickListener { choose(Filter.ALL) }
+        findViewById<TextView>(R.id.chipNew).setOnClickListener { choose(Filter.NEW) }
+        findViewById<TextView>(R.id.chipBle).setOnClickListener { toggleMineOnly() }
+
         vibrateRow.setOnClickListener { toggleVibrate() }
 
         findViewById<View>(R.id.orbClose).setOnClickListener { closeOrb() }
-        orbVibrate.setOnClickListener { toggleVibrate() }
+        orbVibrate.setOnClickListener { toggleOrbHaptics() }
         findViewById<View>(R.id.orbDetail).setOnClickListener {
             val live = orbSignalId?.let { repo.find(it) }
             if (live != null) showDetails(live)
@@ -280,13 +302,21 @@ class V2RadarActivity : SignalRadarActivity() {
 
     override fun onStop() {
         handler.removeCallbacks(orbTick)
+        stopOrbHaptics()
         stopCompass()
         super.onStop()
+    }
+
+    /** Leaving the finder by any route — home, another app, the lock screen — is silent. */
+    override fun onPause() {
+        stopOrbHaptics()
+        super.onPause()
     }
 
     override fun onDestroy() {
         handler.removeCallbacks(compassTick)
         handler.removeCallbacks(orbTick)
+        stopOrbHaptics()
         super.onDestroy()
     }
 
@@ -383,36 +413,43 @@ class V2RadarActivity : SignalRadarActivity() {
         countChips(all)
         styleChips()
         styleStatus(newOnes.size)
-        renderVibrate(orbOpen && orb.emeraldProgress(System.currentTimeMillis()) > 0.5f)
+        renderVibrate()
         renderRecord()
         renderStatusLine(all)
     }
 
     /**
-     * The per-radio counts live in the filter chips (`블루투스 3`), so the sheet keeps its
-     * room for the list. The 🚨 chip is worded by the shared screen.
+     * v2.3 is Bluetooth only (지훈: "와이파이랑 기지국 안보게해주고"). The shared screen reads
+     * every count, the banner, the list, the radar and the 기준 from the list this narrows,
+     * so Wi-Fi and base stations disappear everywhere at once — and are not scanned either.
+     */
+    override fun keepsSource(source: SignalSource): Boolean = source == SignalSource.BLE
+
+    /** The permission card, worded for a phone that only ever reads Bluetooth. */
+    override fun permissionNoticeText(): String =
+        "주변의 블루투스 신호를 읽으려면 ‘근처 기기’와 ‘위치’ 권한이 필요해요.\n" +
+            "읽은 신호는 폰 밖으로 나가지 않고 이 앱 안에서만 씁니다."
+
+    /**
+     * The per-radio counts live in the filter chips, so the sheet keeps its room for the list.
+     * With one radio there is one count; the 🚨 chip is worded by the shared screen.
      */
     private fun countChips(all: List<Signal>) {
+        val ble = all.count { it.source == SignalSource.BLE }
+        findViewById<TextView>(R.id.chipAll)?.text = "전체 $ble"
         findViewById<TextView>(R.id.chipBle)?.text =
-            "블루투스 " + all.count { it.source == SignalSource.BLE }
-        findViewById<TextView>(R.id.chipWifi)?.text =
-            "와이파이 " + all.count { it.source == SignalSource.WIFI }
-        findViewById<TextView>(R.id.chipCell)?.text =
-            "기지국 " + all.count { it.source == SignalSource.CELL }
+            "📌 내 폰 연결 " + all.count { it.isConnected || it.isBonded }
     }
 
     private fun styleChips() {
         val selected = activeFilter
-        val map = listOf(
-            Filter.ALL to R.id.chipAll,
-            Filter.NEW to R.id.chipNew,
-            Filter.BLE to R.id.chipBle,
-            Filter.WIFI to R.id.chipWifi,
-            Filter.CELL to R.id.chipCell
+        val chips = listOf(
+            R.id.chipAll to (selected == Filter.ALL && !mineOnly),
+            R.id.chipNew to (selected == Filter.NEW),
+            R.id.chipBle to mineOnly
         )
-        for ((filter, id) in map) {
+        for ((id, on) in chips) {
             val chip = findViewById<TextView>(id) ?: continue
-            val on = filter == selected
             chip.setBackgroundResource(
                 if (on) R.drawable.bg_v2_chip_on else R.drawable.bg_v2_chip
             )
@@ -425,6 +462,29 @@ class V2RadarActivity : SignalRadarActivity() {
                 ContextCompat.getColor(this, R.color.v2_ink)
             )
         }
+    }
+
+    /** 전체 · 🚨 새 신호: the shared filter, and the 내 폰 연결 chip steps aside. */
+    private fun choose(next: Filter) {
+        mineOnly = false
+        setFilter(next)
+        listKey = null
+        redraw()
+    }
+
+    private fun toggleMineOnly() {
+        mineOnly = !mineOnly
+        listKey = null
+        redraw()
+        toast(
+            if (mineOnly) "내 폰에 연결·등록된 블루투스만 보여요" else "블루투스 신호를 모두 보여요"
+        )
+    }
+
+    /** Redraw the list and the chips without waiting for the next 0.8 s tick. */
+    private fun redraw() {
+        val all = repo.snapshot().filter { keepsSource(it.source) }
+        onSignalsChanged(all, all.filter { it.isNew })
     }
 
     private fun styleStatus(newCount: Int) {
@@ -528,11 +588,12 @@ class V2RadarActivity : SignalRadarActivity() {
 
     // ------------------------------------------------------- 기준 actions (v2.2)
 
-    /** The devices heard right now with their level — the shape a 기준 is saved in. */
+    /** The Bluetooth devices heard right now with their level — the shape a 기준 is saved in. */
     private fun liveEntries(): Map<String, Int> {
         val map = LinkedHashMap<String, Int>()
         for (signal in repo.snapshot()) {
-            if (signal.source == SignalSource.CELL) continue
+            // v2.3 keeps Bluetooth only, so a Wi-Fi or base-station level never enters a 기준.
+            if (!keepsSource(signal.source)) continue
             map[signal.id] = (signal.smoothedRssi ?: signal.rssi.toFloat()).roundToInt()
         }
         return map
@@ -626,12 +687,11 @@ class V2RadarActivity : SignalRadarActivity() {
     private fun onBaselinesChanged() {
         recordKey = null
         renderRecord()
-        val all = repo.snapshot()
-        onSignalsChanged(all, all.filter { it.isNew })
+        redraw()
     }
 
-    /** [emerald] keeps the 진동 button readable once the finder screen turns green. */
-    private fun renderVibrate(emerald: Boolean = false) {
+    /** The 🔔 row of the 기준 tab: the new-signal buzz, which is a separate switch. */
+    private fun renderVibrate() {
         val on = repo.vibrateOnNewSignal()
         vibrateState.text = if (on) "🔔 켜짐" else "🔕 꺼짐"
         vibrateState.setBackgroundResource(
@@ -643,9 +703,64 @@ class V2RadarActivity : SignalRadarActivity() {
                 if (on) R.color.v2_emerald_deep else R.color.v2_ink_soft
             )
         )
-        orbVibrate.text = if (on) "🔔 진동 켜짐" else "🔕 진동 꺼짐"
+    }
+
+    private fun toggleVibrate() {
+        val enabled = !repo.vibrateOnNewSignal()
+        repo.setVibrateOnNewSignal(enabled)
+        renderVibrate()
+        val bell = findViewById<TextView>(R.id.bellToggle)
+        bell.text = if (enabled) "🔔" else "🔕"
+        bell.alpha = if (enabled) 1f else 0.55f
+        toast(if (enabled) "새 신호 진동을 켰어요 · 아주 약하게 한 번만 울려요" else "새 신호 진동을 껐어요")
+    }
+
+    // ------------------------------------------------- finder haptics (v2.3)
+
+    /**
+     * The finder's own switch: the metal-detector buzz that grows with the signal.
+     * It is separate from the 🔔 new-signal switch on the 기준 tab, so turning off the hunt
+     * feedback cannot silence the alert that a device arrived.
+     */
+    private fun toggleOrbHaptics() {
+        orbHapticsOn = !orbHapticsOn
+        prefs().edit().putBoolean(KEY_ORB_HAPTICS, orbHapticsOn).apply()
+        if (orbHapticsOn) {
+            // Pick the rhythm up on this very tick instead of waiting out a gap.
+            haptics?.stop()
+            renderOrb()
+        } else {
+            stopOrbHaptics()
+            renderOrbHaptics(null)
+        }
+        toast(
+            if (orbHapticsOn) "진동을 켰어요 · 가까워질수록 세고 잦게 울려요" else "진동을 껐어요"
+        )
+    }
+
+    /** Stops the motor and forgets the rhythm; called on pause, on close and on destroy. */
+    private fun stopOrbHaptics() {
+        try {
+            haptics?.stop()
+        } catch (e: Exception) {
+            // A motor that will not stop must not break the screen.
+        }
+        orbHapticBand = 0
+    }
+
+    /**
+     * The finder's 진동 button: whether it is on, and which of the five bands the signal is
+     * in right now, so the screen says both "가까워지고 있어" and "진동으로 느낄 수 있어".
+     */
+    private fun renderOrbHaptics(pulse: OrbPulse?) {
+        val emerald = orbOpen && orb.emeraldProgress(System.currentTimeMillis()) > 0.5f
+        orbVibrate.text = when {
+            !orbHapticsOn -> "🔕 진동 꺼짐"
+            pulse == null -> "📳 진동 켜짐"
+            else -> "📳 진동 ${pulse.band}/${OrbHapticsMap.BANDS}단계"
+        }
         when {
-            !on -> {
+            !orbHapticsOn -> {
                 orbVibrate.setBackgroundResource(R.drawable.bg_v2_orb_button)
                 orbVibrate.setTextColor(Color.parseColor("#F2F6F4"))
             }
@@ -661,15 +776,11 @@ class V2RadarActivity : SignalRadarActivity() {
         }
     }
 
-    private fun toggleVibrate() {
-        val enabled = !repo.vibrateOnNewSignal()
-        repo.setVibrateOnNewSignal(enabled)
-        renderVibrate()
-        val bell = findViewById<TextView>(R.id.bellToggle)
-        bell.text = if (enabled) "🔔" else "🔕"
-        bell.alpha = if (enabled) 1f else 0.55f
-        toast(if (enabled) "진동을 켰어요 · 가까워지면 아주 약하게 울려요" else "진동을 껐어요")
-    }
+    private fun prefs(): android.content.SharedPreferences =
+        getSharedPreferences("signal_radar", MODE_PRIVATE)
+
+    /** How many proximity taps the finder has played since it opened (v2.3). */
+    internal fun orbHapticsForTest(): OrbHaptics? = haptics
 
     /** What the list shows for the chosen filter, in the same order the v1 screens use. */
     private fun visible(all: List<Signal>): List<Signal> {
@@ -679,8 +790,14 @@ class V2RadarActivity : SignalRadarActivity() {
             Filter.BLE -> all.filter { it.source == SignalSource.BLE }
             Filter.WIFI -> all.filter { it.source == SignalSource.WIFI }
             Filter.CELL -> all.filter { it.source == SignalSource.CELL }
+        }.filter { keepsSource(it.source) }
+        // The 📌 내 폰 연결 chip narrows whatever the shared filter already chose.
+        val narrowed = if (mineOnly) {
+            filtered.filter { it.source == SignalSource.BLE && (it.isConnected || it.isBonded) }
+        } else {
+            filtered
         }
-        return filtered.sortedWith(
+        return narrowed.sortedWith(
             compareByDescending<Signal> { it.isNew }
                 .thenByDescending { it.isBoosted }
                 .thenByDescending { it.rssi }
@@ -700,9 +817,10 @@ class V2RadarActivity : SignalRadarActivity() {
 
     /** Words the empty list for the v2 wording, and says what the scan is doing. */
     override fun emptyMessage(): String = when {
+        mineOnly -> "내 폰에 연결되거나 등록된 블루투스 기기가 없어요.\n‘📌 내 폰 연결’을 다시 누르면 모든 신호를 보여드려요."
         activeFilter != Filter.ALL -> super.emptyMessage()
-        isScanning -> "스캔 중이에요 · 조금 기다리면 주변 신호가 여기에 나타나요"
-        else -> "아직 잡힌 신호가 없어요.\n‘▶ 스캔 시작’을 눌러 주세요."
+        isScanning -> "스캔 중이에요 · 조금 기다리면 주변 블루투스 신호가 여기에 나타나요"
+        else -> "아직 잡힌 블루투스 신호가 없어요.\n‘▶ 스캔 시작’을 눌러 주세요."
     }
 
     /** One step word everywhere in v2: the list, the callout, the detail card, the orb. */
@@ -782,7 +900,7 @@ class V2RadarActivity : SignalRadarActivity() {
         orbOpen = true
         back.isEnabled = true
         startCompass()
-        renderVibrate()
+        renderOrbHaptics(null)
         renderOrb()
         restart(orbTick, ORB_MS)
     }
@@ -792,6 +910,8 @@ class V2RadarActivity : SignalRadarActivity() {
         orbPage.visibility = View.GONE
         orbWash.alpha = 0f
         handler.removeCallbacks(orbTick)
+        // Leaving the finder must be silent at once, not after the last tap has played out.
+        stopOrbHaptics()
         back.isEnabled = radarFullscreen
         if (tab != Tab.NEARBY) stopCompass()
     }
@@ -821,7 +941,13 @@ class V2RadarActivity : SignalRadarActivity() {
         orbGuide.text = guidance(heading)
         orbProgress.text = orb.levelText()
 
-        renderVibrate(progress > 0.5f)
+        // v2.3: the nearness feedback is vibration (지훈: "진동만 크게해줘").
+        // One call per tick: it answers the band for the button and taps the motor only when
+        // this band's gap has passed, so getting closer is felt as stronger and more often.
+        val pulse = if (orbHapticsOn) haptics?.onLevel(live.smoothedRssi ?: live.rssi.toFloat()) else null
+        orbHapticBand = pulse?.band ?: 0
+        renderOrbHaptics(pulse)
+
         orbView.scale = orb.orbScale()
         orbView.emerald = progress
         orbView.pulse = ((now % PULSE_MS).toFloat() / PULSE_MS)
@@ -831,13 +957,6 @@ class V2RadarActivity : SignalRadarActivity() {
         orbView.aligned = orb.aligned(heading)
         orbView.sectorValues = FloatArray(SignalDirectionTracker.SECTORS) { index ->
             orb.sectorValue(index) ?: Float.NaN
-        }
-
-        // A signal in reach taps the phone every couple of seconds, like a metal detector:
-        // this is how "매우 가까움" is felt without looking at the screen.
-        if (step == V2Look.VERY_NEAR && repo.vibrateOnNewSignal() && now - lastOrbBuzz >= ORB_BUZZ_GAP_MS) {
-            lastOrbBuzz = now
-            buzz(ORB_BUZZ_MS, ORB_BUZZ_AMPLITUDE)
         }
     }
 
@@ -852,7 +971,8 @@ class V2RadarActivity : SignalRadarActivity() {
         emerald: Float,
         scale: Float,
         heading: Float,
-        peak: Float?
+        peak: Float?,
+        hapticBand: Int = if (emerald > 0.5f) OrbHapticsMap.BANDS else 3
     ) {
         handler.removeCallbacks(orbTick)
         orbSignalId = signal.id
@@ -862,7 +982,8 @@ class V2RadarActivity : SignalRadarActivity() {
         orbOpen = true
         back.isEnabled = true
         orbWash.alpha = emerald * 0.94f
-        renderVibrate(emerald > 0.5f)
+        orbHapticBand = hapticBand
+        renderOrbHaptics(previewPulse(hapticBand))
         orbStep.text = step
         orbGuide.text = if (peak != null) {
             "${SignalDirectionTracker.bearingText(peak)} 방향이 가장 세요 · 그쪽으로 돌아 보세요"
@@ -897,13 +1018,17 @@ class V2RadarActivity : SignalRadarActivity() {
         }
     }
 
-    private fun buzz(millis: Long, amplitude: Int) {
-        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator ?: return
-        try {
-            vibrator.vibrate(VibrationEffect.createOneShot(millis, amplitude))
-        } catch (e: Exception) {
-            // A missing motor must never break the finder.
+    /** The pulse a preview paints for a band, so a screenshot shows real numbers. */
+    private fun previewPulse(band: Int): OrbPulse? {
+        val level = when (band) {
+            1 -> -88f
+            2 -> -80f
+            3 -> -70f
+            4 -> -62f
+            5 -> -46f
+            else -> return null
         }
+        return OrbHapticsMap.pulseFor(level)
     }
 
     // -------------------------------------------------------- detail card
@@ -1030,12 +1155,8 @@ class V2RadarActivity : SignalRadarActivity() {
         private const val PULSE_MS = 2_400f
         private const val HEADING_SMOOTHING = 0.25f
 
-        /** A tap every two seconds while the signal is in reach. */
-        private const val ORB_BUZZ_GAP_MS = 2_000L
-        private const val ORB_BUZZ_MS = 30L
-
-        /** Out of 255: felt, but nothing like the buzz 지훈 asked to tone down. */
-        private const val ORB_BUZZ_AMPLITUDE = 60
+        /** v2.3: the finder's proximity vibration is on by default (지훈: "진동만 크게해줘"). */
+        internal const val KEY_ORB_HAPTICS = "orb_haptics_on"
 
         private val MAC_PATTERN = Regex("^([0-9A-F]{2}:){5}[0-9A-F]{2}$")
     }

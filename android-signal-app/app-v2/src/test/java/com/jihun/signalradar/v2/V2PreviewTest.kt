@@ -26,16 +26,17 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * Draws 전파 감지기 v2.2 into PNGs so the screens can be checked by eye without a phone:
+ * Draws 전파 감지기 v2.3 into PNGs so the screens can be checked by eye without a phone:
  *
- *  - `v22-home-sheet.png`   — the pastel top area, the callout, the white sheet with the step
- *                             badges and the pill tab bar
- *  - `v22-empty-scanning.png` — empty state at the top of the list, `■ 스캔 중지`
- *  - `v22-nearby-radar.png` — the bright 10 m radar with 블루투스/와이파이 dots
- *  - `v22-orb-dark.png`     — the finder while the signal is still "보통"
- *  - `v22-orb-emerald.png`  — the arrival screen once 매우 가까움 is held
- *  - `v21-record.png`       — the 기준 tab
- *  - `v22-detail-folded.png` — the white detail card with the MAC folded away
+ *  - `v23-home-ble-only.png` — the main screen of v2.3: Bluetooth rows only, and the chips
+ *                              전체 · 🚨 새 신호 · 📌 내 폰 연결 (no 와이파이 / 기지국 anywhere)
+ *  - `v23-empty-scanning.png` — empty state at the top of the list, `■ 스캔 중지`
+ *  - `v23-nearby-radar.png`  — the bright 10 m radar with one Bluetooth legend
+ *  - `v23-orb-haptic.png`    — the finder at 매우 가까움 with the 📳 진동버튼 at 5/5단계
+ *  - `v23-orb-dark.png`      — the finder while the signal is still "보통"
+ *  - `v23-orb-emerald.png`   — the arrival screen once 매우 가까움 is held
+ *  - `v23-record.png`        — the 기준 tab
+ *  - `v23-detail-folded.png` — the white detail card with the MAC folded away
  *
  * Each also asserts it produced a real PNG, so a normal test run keeps them up to date.
  */
@@ -157,7 +158,54 @@ class V2PreviewTest {
             "F8:1E:DF:12:34:56", -41, txPower = -52, connected = true, bonded = true
         )
         activity.findViewById<TextView>(R.id.v2CalloutTitle).text = first.title
-        capture(activity, "v22-home-sheet.png", 1233, 2673)
+        capture(activity, "v23-home-sheet.png", 1233, 2673)
+        controller.pause().stop().destroy()
+    }
+
+    /**
+     * The brief's `v23-home-ble-only.png`: the main screen of v2.3. The scanner is fed the same
+     * mixed list a real room gives (Bluetooth · Wi-Fi · Bluetooth · Bluetooth · Wi-Fi), and the
+     * screen has to show the Bluetooth rows only, with no 와이파이 or 기지국 chip to press.
+     */
+    @Test
+    fun render_the_ble_only_home_without_wifi_or_cell() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(samples())
+        refresh()
+        capture(activity, "v23-home-ble-only.png", 1233, 2673)
+
+        val list = activity.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.v2SignalList)
+        assertEquals("every row is a Bluetooth device", 3, list.adapter?.itemCount)
+        assertEquals(View.GONE, activity.findViewById<View>(R.id.chipWifi).visibility)
+        assertEquals(View.GONE, activity.findViewById<View>(R.id.chipCell).visibility)
+        assertEquals("전체 3", activity.findViewById<TextView>(R.id.chipAll).text.toString())
+        controller.pause().stop().destroy()
+    }
+
+    /**
+     * The brief's `v23-orb-haptic.png`: the finder in reach, with the 📳 switch on and the band
+     * it is tapping at, so the screenshot shows both the toggle and the nearness state.
+     */
+    @Test
+    fun render_the_orb_with_the_haptic_switch() {
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        val target = samples().first()
+        activity.previewOrb(
+            signal = target,
+            step = "매우 가까움",
+            emerald = 1f,
+            scale = 0.96f,
+            heading = 150f,
+            peak = 150f
+        )
+        capture(activity, "v23-orb-haptic.png", 1233, 2673)
+        assertEquals(
+            "📳 진동 5/5단계",
+            activity.findViewById<TextView>(R.id.orbVibrate).text.toString()
+        )
         controller.pause().stop().destroy()
     }
 
@@ -168,7 +216,7 @@ class V2PreviewTest {
         val activity = controller.get()
         activity.findViewById<TextView>(R.id.btnScan).performClick()
         refresh()
-        capture(activity, "v22-empty-scanning.png", 1233, 2673)
+        capture(activity, "v23-empty-scanning.png", 1233, 2673)
         controller.pause().stop().destroy()
     }
 
@@ -181,7 +229,7 @@ class V2PreviewTest {
         refresh()
         activity.findViewById<View>(R.id.tabNearby).performClick()
         refresh()
-        capture(activity, "v22-nearby-radar.png", 1233, 2673)
+        capture(activity, "v23-nearby-radar.png", 1233, 2673)
         controller.pause().stop().destroy()
     }
 
@@ -198,7 +246,7 @@ class V2PreviewTest {
             heading = 40f,
             peak = 150f
         )
-        capture(activity, "v22-orb-dark.png", 1233, 2673)
+        capture(activity, "v23-orb-dark.png", 1233, 2673)
         controller.pause().stop().destroy()
     }
 
@@ -215,7 +263,7 @@ class V2PreviewTest {
             heading = 150f,
             peak = 150f
         )
-        capture(activity, "v22-orb-emerald.png", 1233, 2673)
+        capture(activity, "v23-orb-emerald.png", 1233, 2673)
         controller.pause().stop().destroy()
     }
 
@@ -225,17 +273,17 @@ class V2PreviewTest {
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
         // Three named 기준, saved one after another as 지훈 would: the newest is in use.
-        val all = samples()
-        repoOf(activity).upsert(all.take(2))
+        val devices = samples().filter { it.source == SignalSource.BLE }
+        repoOf(activity).upsert(devices.take(1))
         saveBaseline(activity, "우리 집")
-        repoOf(activity).upsert(all.subList(2, 4))
+        repoOf(activity).upsert(devices.take(2))
         saveBaseline(activity, "2학년 1반")
-        repoOf(activity).upsert(all.subList(4, all.size))
+        repoOf(activity).upsert(devices)
         saveBaseline(activity, "복도")
         refresh()
         activity.findViewById<View>(R.id.tabRecord).performClick()
         refresh()
-        capture(activity, "v22-record.png", 1233, 2673)
+        capture(activity, "v23-record.png", 1233, 2673)
 
         // The brief's screenshot has to show the reset button, so the three cards plus the
         // keep/wipe buttons must fit the sheet without scrolling.
@@ -259,7 +307,7 @@ class V2PreviewTest {
         refresh()
         activity.findViewById<View>(R.id.tabRecord).performClick()
         refresh()
-        capture(activity, "v22-record-empty.png", 1233, 2673)
+        capture(activity, "v23-record-empty.png", 1233, 2673)
         // Nothing saved: the reset button is away and the save button is the thing to press.
         assertEquals(View.GONE, activity.findViewById<View>(R.id.v2RecordReset).visibility)
         assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.btnBaseline).visibility)
@@ -275,7 +323,7 @@ class V2PreviewTest {
         refresh()
         activity.findViewById<View>(R.id.btnBaseline).performClick()
         val dialog = ShadowDialog.getLatestDialog()
-        renderDialog(dialog, "v22-name-card.png")
+        renderDialog(dialog, "v23-name-card.png")
         dialog.dismiss()
         controller.pause().stop().destroy()
     }
@@ -298,7 +346,7 @@ class V2PreviewTest {
         method.isAccessible = true
         method.invoke(activity, samples().first())
         val dialog = ShadowDialog.getLatestDialog()
-        renderDialog(dialog, "v22-detail-folded.png")
+        renderDialog(dialog, "v23-detail-folded.png")
         dialog.dismiss()
         controller.pause().stop().destroy()
     }

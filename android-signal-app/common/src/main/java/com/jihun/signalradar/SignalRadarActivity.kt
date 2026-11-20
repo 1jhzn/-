@@ -75,6 +75,15 @@ abstract class SignalRadarActivity : AppCompatActivity() {
     /** Whether the detail body prints the raw address line itself (v2 shows it behind a toggle). */
     protected open val showAddressInDetail: Boolean = true
 
+    /**
+     * The radios this app is about. Everything else is neither scanned nor listed.
+     *
+     * 전파 감지기 and 내 주변 read all three ([true]); 전파 감지기 v2.3 is Bluetooth only
+     * (지훈: "와이파이랑 기지국 안보게해주고"), so it answers false for WIFI and CELL and the
+     * whole screen — counts, list, banner, radar, 기준, finder — never sees them.
+     */
+    protected open fun keepsSource(source: SignalSource): Boolean = true
+
     protected lateinit var repo: SignalRepository
     private lateinit var ble: BleScanner
     private lateinit var wifi: WifiScanner
@@ -297,9 +306,11 @@ abstract class SignalRadarActivity : AppCompatActivity() {
         scanning = true
         problemText = null
         ble.start()
-        wifi.start()
+        // A radio the screen never shows is not read at all: a Wi-Fi scan wakes the chip and
+        // costs battery, and a base-station poll is pointless when nothing displays it.
+        if (keepsSource(SignalSource.WIFI)) wifi.start()
         handler.removeCallbacks(cellPoller)
-        handler.post(cellPoller)
+        if (keepsSource(SignalSource.CELL)) handler.post(cellPoller)
         updateScanButton()
         refresh()
     }
@@ -324,7 +335,9 @@ abstract class SignalRadarActivity : AppCompatActivity() {
     private fun refresh() {
         if (!::adapter.isInitialized) return
         repo.prune()
-        val all = repo.snapshot()
+        // The one place the radios are narrowed: every count, banner, list and subclass hook
+        // below works from this list, so nothing can leak a radio the app does not show.
+        val all = repo.snapshot().filter { keepsSource(it.source) }
 
         statBle.text = all.count { it.source == SignalSource.BLE }.toString()
         statWifi.text = all.count { it.source == SignalSource.WIFI }.toString()
@@ -444,6 +457,11 @@ abstract class SignalRadarActivity : AppCompatActivity() {
         )
     }
 
+    /** The permission card's wording; a Bluetooth-only app does not mention Wi-Fi. */
+    protected open fun permissionNoticeText(): String =
+        "주변의 블루투스·와이파이·기지국을 읽으려면 ‘근처 기기’와 ‘위치’ 권한이 필요해요.\n" +
+            "읽은 신호는 폰 밖으로 나가지 않고 이 앱 안에서만 씁니다."
+
     /** What the list says when nothing matches; a subclass may word it differently. */
     protected open fun emptyMessage(): String = when (filter) {
         Filter.NEW -> "새로 잡힌 신호가 없어요.\n‘기준 저장’ 뒤에 처음 나타난 신호가 여기에 보여요."
@@ -471,29 +489,45 @@ abstract class SignalRadarActivity : AppCompatActivity() {
         }
     }
 
+    /** True when Wi-Fi or a base station is part of what this screen shows. */
+    protected fun readsWifiOrCell(): Boolean =
+        keepsSource(SignalSource.WIFI) || keepsSource(SignalSource.CELL)
+
     private fun renderNotice() {
         val missing = missingPermissions()
         if (missing.isNotEmpty()) {
-            notice(
-                "주변의 블루투스·와이파이·기지국을 읽으려면 ‘근처 기기’와 ‘위치’ 권한이 필요해요.\n" +
-                    "읽은 신호는 폰 밖으로 나가지 않고 이 앱 안에서만 씁니다.",
-                if (askedPermissions) "앱 권한 설정 열기" else "권한 허용"
-            ) {
+            notice(permissionNoticeText(), if (askedPermissions) "앱 권한 설정 열기" else "권한 허용") {
                 if (askedPermissions) openAppSettings() else permissionLauncher.launch(missing.toTypedArray())
             }
             return
         }
         if (!ble.isSupported) {
-            notice("이 폰에서는 블루투스 스캔을 쓸 수 없어요. 와이파이와 기지국은 계속 잡습니다.", null) {}
+            notice(
+                if (readsWifiOrCell()) {
+                    "이 폰에서는 블루투스 스캔을 쓸 수 없어요. 와이파이와 기지국은 계속 잡습니다."
+                } else {
+                    "이 폰에서는 블루투스 스캔을 쓸 수 없어요."
+                },
+                null
+            ) {}
             return
         }
         if (scanning && !ble.isEnabled) {
-            notice("블루투스가 꺼져 있어 와이파이·기지국만 잡고 있어요.", "블루투스 켜기") {
+            notice(
+                if (readsWifiOrCell()) {
+                    "블루투스가 꺼져 있어 와이파이·기지국만 잡고 있어요."
+                } else {
+                    "블루투스가 꺼져 있어 신호를 잡지 못하고 있어요. 블루투스를 켜면 바로 다시 읽어요."
+                },
+                "블루투스 켜기"
+            ) {
                 requestBluetooth()
             }
             return
         }
-        if (scanning && !locationEnabled()) {
+        // The location switch only matters to the Wi-Fi and base-station readers; a
+        // Bluetooth-only screen does not nag about it.
+        if (scanning && readsWifiOrCell() && !locationEnabled()) {
             notice(
                 "폰의 ‘위치’가 꺼져 있어 와이파이·기지국 목록이 비어 있을 수 있어요.\n" +
                     "위치는 신호를 읽는 용도로만 쓰고 저장하지 않습니다.",
@@ -556,7 +590,8 @@ abstract class SignalRadarActivity : AppCompatActivity() {
         }
     }
 
-    private fun setFilter(next: Filter) {
+    /** Also reached by a subclass that adds a filter of its own beside 전체 · 새 신호. */
+    protected fun setFilter(next: Filter) {
         filter = next
         lastSignature = null
         updateChips()

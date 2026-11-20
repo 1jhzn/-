@@ -14,8 +14,13 @@ import org.json.JSONObject
  * of them chosen as the one in use.
  *
  * So a 기준 is now a named snapshot: a name, when it was saved, and the level heard from every
- * bluetooth / Wi-Fi device at that moment. One of them is *active* ([activeId]); the active one
- * is the only thing the "🚨 새 신호" check compares against.
+ * bluetooth device at that moment. One of them is *active* ([activeId]); the active one is the
+ * only thing the "🚨 새 신호" check compares against.
+ *
+ * v2.3 is Bluetooth only (지훈: "와이파이랑 기지국 안보게해주고"), so a 기준 holds Bluetooth
+ * entries and nothing else: a Wi-Fi or base-station line saved by v2.2 is dropped when the
+ * list is read ([isBluetooth]) and never reaches the repository, which keeps the 기기 count on
+ * each card equal to the devices actually being compared.
  *
  * The scanning code in `common/` still keeps exactly one baseline in [com.jihun.signalradar.SignalRepository];
  * this store is the list on top of it and pushes the active one down (`applyTo`). That keeps
@@ -93,7 +98,7 @@ class V2BaselineStore(context: Context) {
             id = newId(savedAt),
             name = label,
             savedAt = savedAt,
-            entries = LinkedHashMap(entries)
+            entries = bluetoothOnly(entries)
         )
         items.add(0, item)
         activeId = item.id
@@ -163,7 +168,10 @@ class V2BaselineStore(context: Context) {
      */
     fun applyTo(baseline: Baseline, repo: com.jihun.signalradar.SignalRepository) {
         repo.clearBaseline()
-        for ((id, rssi) in baseline.entries) repo.addToBaseline(id, rssi)
+        for ((id, rssi) in baseline.entries) {
+            if (!isBluetooth(id)) continue
+            repo.addToBaseline(id, rssi)
+        }
     }
 
     /** Apply whichever 기준 is active; with none, the repository is left without one. */
@@ -249,6 +257,10 @@ class V2BaselineStore(context: Context) {
                 val keys = entriesJson.keys()
                 while (keys.hasNext()) {
                     val key = keys.next()
+                    // A 기준 saved before v2.3 may hold Wi-Fi or base stations; those lines are
+                    // dropped here, so an upgrade never leaves a card counting radios the app
+                    // no longer shows.
+                    if (!isBluetooth(key)) continue
                     entries[key] = entriesJson.optInt(key, -100)
                 }
                 items.add(
@@ -272,6 +284,13 @@ class V2BaselineStore(context: Context) {
 
     private fun tidy(name: String): String =
         name.trim().replace(Regex("\\s+"), " ").take(MAX_NAME)
+
+    /** Only Bluetooth has a level worth comparing in v2.3. */
+    private fun bluetoothOnly(entries: Map<String, Int>): LinkedHashMap<String, Int> {
+        val kept = LinkedHashMap<String, Int>(entries.size)
+        for ((id, rssi) in entries) if (isBluetooth(id)) kept[id] = rssi
+        return kept
+    }
 
     private fun uniqueName(name: String, ignoreId: String? = null): String {
         val taken = items.filter { it.id != ignoreId }.map { it.name }.toSet()
@@ -307,6 +326,11 @@ class V2BaselineStore(context: Context) {
 
         internal const val AUTO_PREFIX = "기준"
         internal const val LEGACY_NAME = "저장된 기준"
+
+        /** Signal ids are prefixed by their radio (`ble:`, `wifi:`, `cell:`). */
+        internal const val BLE_PREFIX = "ble:"
+
+        internal fun isBluetooth(id: String): Boolean = id.startsWith(BLE_PREFIX)
 
         /** Long enough for "2학년 1반 화학실", short enough to stay on one card line. */
         internal const val MAX_NAME = 20

@@ -85,7 +85,6 @@ class V2RadarActivity : SignalRadarActivity() {
     /** v2.3: the finder's nearness feedback — vibration only, no sound at all. */
     private var haptics: OrbHaptics? = null
     private var orbHapticsOn = true
-    private var orbHapticBand = 0
 
     /** `📌 내 폰 연결`: a v2.3 chip that narrows the list to the devices paired to this phone. */
     private var mineOnly = false
@@ -467,9 +466,8 @@ class V2RadarActivity : SignalRadarActivity() {
     /** 전체 · 🚨 새 신호: the shared filter, and the 내 폰 연결 chip steps aside. */
     private fun choose(next: Filter) {
         mineOnly = false
+        // setFilter refreshes, and that refresh already reads `mineOnly`.
         setFilter(next)
-        listKey = null
-        redraw()
     }
 
     private fun toggleMineOnly() {
@@ -745,7 +743,6 @@ class V2RadarActivity : SignalRadarActivity() {
         } catch (e: Exception) {
             // A motor that will not stop must not break the screen.
         }
-        orbHapticBand = 0
     }
 
     /**
@@ -945,7 +942,6 @@ class V2RadarActivity : SignalRadarActivity() {
         // One call per tick: it answers the band for the button and taps the motor only when
         // this band's gap has passed, so getting closer is felt as stronger and more often.
         val pulse = if (orbHapticsOn) haptics?.onLevel(live.smoothedRssi ?: live.rssi.toFloat()) else null
-        orbHapticBand = pulse?.band ?: 0
         renderOrbHaptics(pulse)
 
         orbView.scale = orb.orbScale()
@@ -982,7 +978,6 @@ class V2RadarActivity : SignalRadarActivity() {
         orbOpen = true
         back.isEnabled = true
         orbWash.alpha = emerald * 0.94f
-        orbHapticBand = hapticBand
         renderOrbHaptics(previewPulse(hapticBand))
         orbStep.text = step
         orbGuide.text = if (peak != null) {

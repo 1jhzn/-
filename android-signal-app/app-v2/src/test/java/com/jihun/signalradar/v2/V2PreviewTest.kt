@@ -264,6 +264,32 @@ class V2PreviewTest {
         controller.pause().stop().destroy()
     }
 
+    /**
+     * v2.5 (지훈: "앱이름을 전파로 바꿔줘"): the header reads `전파` where it used to say
+     * `전파 감지기 v2`, and the bell and status chip still sit on the same line.
+     */
+    @Test
+    fun render_the_home_under_the_name_전파() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(samples())
+        refresh()
+        val title = activity.findViewById<TextView>(R.id.v2AppTitle)
+        assertEquals("전파", title.text.toString())
+        capture(activity, "v25-home-title.png", 1233, 2673)
+
+        // The shorter name must not push the bell or the 상태 chip off the header bar.
+        val bar = activity.findViewById<View>(R.id.v2HeaderBar)
+        val bell = activity.findViewById<View>(R.id.bellToggle)
+        val chip = activity.findViewById<View>(R.id.statusChip)
+        assertEquals(View.VISIBLE, bell.visibility)
+        assertEquals(View.VISIBLE, chip.visibility)
+        assertTrue("the chip must stay inside the header: chip.right=${chip.right} bar.width=${bar.width}", chip.right <= bar.width)
+        assertTrue("the title must keep its own space: title.width=${title.width}", title.width > 0)
+        controller.pause().stop().destroy()
+    }
+
     @Test
     fun render_the_empty_state_while_scanning() {
         grantScanPermissions()

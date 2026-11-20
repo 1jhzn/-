@@ -9,8 +9,23 @@
 
 이 폴더는 **앱 세 개**를 만듭니다. 원래의 `전파 감지기`(`com.jihun.signalradar`),
 `전파 감지기 (내 주변)`(`com.jihun.signalradar.nearby`), 그리고 2026-11-20에 추가한
-`전파 감지기 v2`(`com.jihun.signalradar.v2`)입니다. 패키지가 달라서 **지웠다 다시 깔 필요 없이
+**`전파`**(`com.jihun.signalradar.v2`, v2.5부터의 이름)입니다. 패키지가 달라서 **지웠다 다시 깔 필요 없이
 나란히 설치**됩니다. v2는 기존 앱을 덮어쓰는 업데이트가 아니라 **새 파일로 따로 설치되는 앱**입니다.
+
+## 전파 v2.5 (2026-11-20) — 앱 이름 `전파`
+
+`:app-v2` · `com.jihun.signalradar.v2` · versionCode **6** · versionName **"2.5"** · 이름 **`전파`**.
+지훈 님 요청: **"앱이름을 전파로 바꿔줘"**.
+
+- **런처 이름** — 홈 화면 아이콘 아래가 `전파 감지기 v2` → **`전파`** (`app_name_v2`).
+  `aapt2 dump badging`의 `application-label:'전파'`로 APK 안에서 확인했습니다.
+- **화면 제목** — 앱 위쪽 헤더(`v2AppTitle`)도 같은 **`전파`** 로 통일했습니다.
+- **바뀐 것은 이름뿐** — 패키지·아이콘·화면 구성·저장된 기준·설정은 v2.4와 같아서
+  지우지 않고 그대로 덮어쓰기 설치됩니다(같은 디버그 키).
+
+```bash
+./gradlew :app-v2:testDebugUnitTest :app-v2:lintDebug :app-v2:assembleDebug
+```
 
 ## 전파 감지기 v2.4 (2026-11-20) — 📏 예상 거리 보기
 

@@ -113,15 +113,19 @@ class V2UiTest {
     // ------------------------------------------------------------- app identity
 
     @Test
-    fun it_is_a_separate_app_with_its_own_package_name_and_the_24_version() {
+    fun it_is_a_separate_app_named_전파_with_its_own_package_name_and_the_25_version() {
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
         assertEquals("com.jihun.signalradar.v2", activity.packageName)
-        assertEquals("전파 감지기 v2", activity.getString(R.string.app_name_v2))
+        assertEquals("전파", activity.getString(R.string.app_name_v2))
+
+        // The header title is the same word 지훈 sees under the launcher icon.
+        val title = activity.findViewById<android.widget.TextView>(R.id.v2AppTitle)
+        assertEquals("전파", title.text.toString())
 
         val info = activity.packageManager.getPackageInfo(activity.packageName, 0)
-        assertEquals("2.4", info.versionName)
-        assertEquals(5, info.versionCode)
+        assertEquals("2.5", info.versionName)
+        assertEquals(6, info.versionCode)
         controller.pause().stop().destroy()
     }
 

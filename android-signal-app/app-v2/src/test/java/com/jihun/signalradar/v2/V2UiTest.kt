@@ -972,8 +972,36 @@ class V2UiTest {
         controller.pause().stop().destroy()
     }
 
-    /** The finder's own pill flips the one switch the main screen uses, both ways. */
+    /**
+     * 지훈's own path: 중지 → 방향 찾기 → 기기 상세 → 닫기 · 나가기. The detail card inside the
+     * finder must not wake the radios either.
+     */
     @Test
+    fun the_detail_card_inside_the_finder_leaves_a_stopped_scan_stopped() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(listOf(bleSignal()))
+        refresh()
+
+        val button = activity.findViewById<TextView>(R.id.btnScan)
+        button.performClick()
+        button.performClick()
+        assertEquals("▶ 스캔 시작", button.text.toString())
+
+        activity.findViewById<View>(R.id.v2Callout).performClick()
+        activity.findViewById<View>(R.id.orbDetail).performClick()
+        val detail = ShadowDialog.getLatestDialog()
+        assertNotNull("기기 상세 must open its card", detail)
+        assertEquals("▶ 스캔 시작", button.text.toString())
+
+        detail.dismiss()
+        activity.findViewById<View>(R.id.orbClose).performClick()
+        assertEquals("▶ 스캔 시작", button.text.toString())
+        controller.pause().stop().destroy()
+    }
+
+    /** The finder's own pill flips the one switch the main screen uses, both ways. */    @Test
     fun the_finder_scan_pill_is_the_only_way_to_start_or_stop_from_the_finder() {
         grantScanPermissions()
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()

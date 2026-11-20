@@ -755,9 +755,9 @@ class V2RadarActivity : SignalRadarActivity() {
     private fun renderOrbHaptics(pulse: OrbPulse?) {
         val emerald = orbOpen && orb.emeraldProgress(System.currentTimeMillis()) > 0.5f
         orbVibrate.text = when {
-            !orbHapticsOn -> "🔕 진동 꺼짐"
-            pulse == null -> "📳 진동 켜짐"
-            else -> "📳 진동 ${pulse.band}/${OrbHapticsMap.BANDS}단계"
+            !orbHapticsOn -> "🔕 진동"
+            pulse == null -> "📳 진동"
+            else -> "📳 진동 ${pulse.band}/${OrbHapticsMap.BANDS}"
         }
         when {
             !orbHapticsOn -> {

@@ -203,7 +203,7 @@ class V2PreviewTest {
         )
         capture(activity, "v23-orb-haptic.png", 1233, 2673)
         assertEquals(
-            "📳 진동 5/5단계",
+            "📳 진동 5/5",
             activity.findViewById<TextView>(R.id.orbVibrate).text.toString()
         )
         controller.pause().stop().destroy()

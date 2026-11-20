@@ -643,12 +643,12 @@ class V2UiTest {
 
         // Close: the button says so, and the motor has already tapped.
         val button = activity.findViewById<TextView>(R.id.orbVibrate)
-        assertEquals("📳 진동 5/5단계", button.text.toString())
+        assertEquals("📳 진동 5/5", button.text.toString())
         assertTrue("the finder must have tapped", (activity.orbHapticsForTest()?.taps ?: 0) >= 1)
 
         // The switch: off is silent at once and stays off in the saved setting.
         button.performClick()
-        assertEquals("🔕 진동 꺼짐", button.text.toString())
+        assertEquals("🔕 진동", button.text.toString())
         assertEquals(0, activity.orbHapticsForTest()?.taps)
         assertFalse(
             activity.getSharedPreferences("signal_radar", android.content.Context.MODE_PRIVATE)
@@ -684,7 +684,7 @@ class V2UiTest {
         refresh()
 
         // -95 dBm is out of reach: the switch is on, but nothing buzzes.
-        assertEquals("📳 진동 켜짐", activity.findViewById<TextView>(R.id.orbVibrate).text.toString())
+        assertEquals("📳 진동", activity.findViewById<TextView>(R.id.orbVibrate).text.toString())
         assertEquals(0, activity.orbHapticsForTest()?.band)
         assertEquals(0, activity.orbHapticsForTest()?.taps)
         controller.pause().stop().destroy()

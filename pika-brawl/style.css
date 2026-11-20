@@ -373,3 +373,9 @@ html, body {
   .btns { right: 10px; bottom: 12px; gap: 10px; }
   #my-ult { width: 220px; bottom: 4px; }
 }
+@media (max-height: 560px) and (orientation: landscape) {
+  .abtn.attack span:first-child { font-size: 15px; }
+  .abtn.attack span { font-size: 9px; }
+  .abtn span { white-space: nowrap; }
+  .abtn.ult span:first-child { font-size: 14px; }
+}

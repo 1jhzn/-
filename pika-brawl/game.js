@@ -240,12 +240,12 @@
     G.players.push(me);
     const mates = [];
     for (let i = 1; i < n; i++) {
-      const b = BKEYS[Math.floor(Math.random() * BKEYS.length)];
+      const b = BKEYS[i % BKEYS.length];
       mates.push(makePlayer({ name: AI_NAMES[i % AI_NAMES.length], team: 'blue', brawler: b, isAI: true }));
     }
     G.players = G.players.concat(mates);
     for (let i = 0; i < n; i++) {
-      const b = BKEYS[Math.floor(Math.random() * BKEYS.length)];
+      const b = BKEYS[(i + 2) % BKEYS.length];
       G.players.push(makePlayer({ name: 'AI ' + AI_NAMES[(i + 2) % AI_NAMES.length], team: 'red', brawler: b, isAI: true }));
     }
     G.myIndex = 0;

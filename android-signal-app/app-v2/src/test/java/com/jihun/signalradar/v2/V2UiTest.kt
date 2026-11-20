@@ -113,15 +113,15 @@ class V2UiTest {
     // ------------------------------------------------------------- app identity
 
     @Test
-    fun it_is_a_separate_app_with_its_own_package_name_and_the_23_version() {
+    fun it_is_a_separate_app_with_its_own_package_name_and_the_24_version() {
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
         assertEquals("com.jihun.signalradar.v2", activity.packageName)
         assertEquals("전파 감지기 v2", activity.getString(R.string.app_name_v2))
 
         val info = activity.packageManager.getPackageInfo(activity.packageName, 0)
-        assertEquals("2.3", info.versionName)
-        assertEquals(4, info.versionCode)
+        assertEquals("2.4", info.versionName)
+        assertEquals(5, info.versionCode)
         controller.pause().stop().destroy()
     }
 
@@ -224,8 +224,9 @@ class V2UiTest {
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
         val root = activity.findViewById<View>(android.R.id.content)
-        // v2.3 is Bluetooth only: 전체 · 🚨 새 신호 · 📌 내 폰 연결.
-        val chips = listOf(R.id.chipAll, R.id.chipNew, R.id.chipBle)
+        // v2.3 is Bluetooth only: 전체 · 🚨 새 신호 · 📌 내 폰 연결, then v2.4's 📏 예상 거리
+        // on its own second row.
+        val chips = listOf(R.id.chipAll, R.id.chipNew, R.id.chipBle, R.id.chipDistance)
         repoOf(activity).upsert(listOf(bleSignal(), bleSignal(address = "AA:BB:CC:DD:EE:FF")))
         refresh()
 

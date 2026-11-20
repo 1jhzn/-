@@ -38,6 +38,12 @@ import java.util.concurrent.TimeUnit
  *  - `v23-record.png`        — the 기준 tab
  *  - `v23-detail-folded.png` — the white detail card with the MAC folded away
  *
+ * v2.4 (지훈: "거리도 버튼을 누르면 예상을 볼수있게"):
+ *
+ *  - `v24-distance-on.png`   — the main screen with `📏 예상 거리` pressed: the top card and
+ *                              every row write the estimate beside the step (`매우 가까움 · 약 0.7m`)
+ *  - `v24-orb-distance.png`  — the finder showing `📏 예상 50cm 이내` under the step word
+ *
  * Each also asserts it produced a real PNG, so a normal test run keeps them up to date.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -210,6 +216,55 @@ class V2PreviewTest {
     }
 
     @Test
+    fun render_the_home_with_the_estimate_switched_on() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(samples())
+        refresh()
+        activity.findViewById<View>(R.id.chipDistance).performClick()
+        refresh()
+        capture(activity, "v24-distance-on.png", 1233, 2673)
+
+        // The switch is drawn as pressed, and the top card writes a real estimate.
+        assertEquals(
+            activity.getColor(R.color.v2_sheet),
+            activity.findViewById<TextView>(R.id.chipDistance).currentTextColor
+        )
+        val step = activity.findViewById<TextView>(R.id.v2CalloutStep).text.toString()
+        assertTrue("the top card must carry the estimate: $step", step.contains(" · "))
+        assertTrue(step, step.contains("매우 가까움"))
+        controller.pause().stop().destroy()
+    }
+
+    @Test
+    fun render_the_finder_with_the_estimate() {
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        val target = samples().first()
+        activity.findViewById<View>(R.id.chipDistance).performClick()
+        activity.previewOrb(
+            signal = target,
+            step = "매우 가까움",
+            emerald = 1f,
+            scale = 0.96f,
+            heading = 150f,
+            peak = 150f,
+            metres = "50cm 이내"
+        )
+        capture(activity, "v24-orb-distance.png", 1233, 2673)
+        assertEquals(
+            "📏 예상 50cm 이내",
+            activity.findViewById<TextView>(R.id.orbDistance).text.toString()
+        )
+        assertEquals(
+            View.VISIBLE,
+            activity.findViewById<View>(R.id.orbDistance).visibility
+        )
+        controller.pause().stop().destroy()
+    }
+
+    @Test
     fun render_the_empty_state_while_scanning() {
         grantScanPermissions()
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
@@ -338,8 +393,7 @@ class V2PreviewTest {
     }
 
     @Test
-    fun render_the_white_detail_card_with_the_mac_folded() {
-        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+    fun render_the_white_detail_card_with_the_mac_folded() {        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
         val method = SignalRadarActivity::class.java
             .getDeclaredMethod("showDetails", Signal::class.java)
@@ -347,6 +401,28 @@ class V2PreviewTest {
         method.invoke(activity, samples().first())
         val dialog = ShadowDialog.getLatestDialog()
         renderDialog(dialog, "v23-detail-folded.png")
+        dialog.dismiss()
+        controller.pause().stop().destroy()
+    }
+
+    /** v2.4: the detail card with its own `📏 예상 거리 접기` pill and the estimate written in. */
+    @Test
+    fun render_the_detail_card_with_the_estimate() {
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        val signal = samples().first()
+        repoOf(activity).upsert(listOf(signal))
+        activity.findViewById<View>(R.id.chipDistance).performClick()
+        val method = SignalRadarActivity::class.java
+            .getDeclaredMethod("showDetails", Signal::class.java)
+        method.isAccessible = true
+        method.invoke(activity, signal)
+        val dialog = ShadowDialog.getLatestDialog()
+        renderDialog(dialog, "v24-detail-distance.png")
+        assertTrue(
+            dialog.findViewById<TextView>(R.id.detailBody).text
+                .contains("대략 거리: 매우 가까움 · 약 0.7m")
+        )
         dialog.dismiss()
         controller.pause().stop().destroy()
     }

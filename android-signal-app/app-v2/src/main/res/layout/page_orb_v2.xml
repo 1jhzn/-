@@ -122,6 +122,21 @@
             android:textSize="28sp"
             android:textStyle="bold" />
 
+        <!-- v2.4: with `📏 예상 거리` on, the finder writes the estimate under the big step
+             word (`📏 예상 약 1.8m`). Off it is not drawn at all, so the step word stays
+             centred on its own. -->
+        <TextView
+            android:id="@+id/orbDistance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:gravity="center"
+            android:text="📏 예상 약 1.8m"
+            android:textColor="@color/v2_orb_text"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/orbGuide"
             android:layout_width="match_parent"
@@ -176,6 +191,23 @@
                 android:text="방향 다시"
                 android:textColor="@color/v2_orb_text"
                 android:textSize="11.5sp"
+                android:textStyle="bold" />
+
+            <!-- v2.4: the same distance switch, so the estimate can be turned on while
+                 hunting without leaving the finder (지훈: "거리도 버튼을 누르면 예상을"). -->
+            <TextView
+                android:id="@+id/orbDistanceToggle"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_marginStart="7dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_v2_orb_button"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="📏 예상 거리"
+                android:textColor="@color/v2_orb_text"
+                android:textSize="11sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>

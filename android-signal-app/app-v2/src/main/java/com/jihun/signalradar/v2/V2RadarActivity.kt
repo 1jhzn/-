@@ -55,6 +55,16 @@ import kotlin.math.roundToInt
  * Everything that reads radios, keeps the list, spots new signals, folds the MAC address,
  * reads the device name over GATT (0.7 s + ⏹ 읽기 멈추기) and measures the direction is
  * inherited, so those behaviours are exactly the ones 지훈 already has.
+ *
+ * v2.4 answers "거리도 버튼을 누르면 예상을 볼수있게 해줘":
+ *
+ *  - `📏 예상 거리` (a second chip row on the 신호 tab, a button in the finder and a pill on the
+ *    detail card) puts the estimate beside every step — `매우 가까움 · 50cm 이내`,
+ *    `가까움 · 약 1.8m` — in the list, the top card, the finder and the detail card. The
+ *    switch is remembered ([V2Distance.KEY_ON]) and off by default, so the screen stays a
+ *    clean row of step words until it is pressed.
+ *  - The distance pill on a row is its own tap target: it flips the switch, while the rest of
+ *    the row still opens the finder.
  */
 class V2RadarActivity : SignalRadarActivity() {
 
@@ -88,6 +98,10 @@ class V2RadarActivity : SignalRadarActivity() {
 
     /** `📌 내 폰 연결`: a v2.3 chip that narrows the list to the devices paired to this phone. */
     private var mineOnly = false
+
+    /** v2.4: whether every step also writes its estimated metres (`매우 가까움 · 50cm 이내`). */
+    private var distanceOn = false
+
     private var nearest: Signal? = null
     private var listKey: String? = null
     private var nearbyKey: String? = null
@@ -150,6 +164,11 @@ class V2RadarActivity : SignalRadarActivity() {
     private lateinit var orbProgress: TextView
     private lateinit var orbView: V2OrbView
     private lateinit var orbVibrate: TextView
+    private lateinit var orbDistance: TextView
+    private lateinit var orbDistanceToggle: TextView
+
+    /** v2.4: the 신호 tab's distance switch. */
+    private lateinit var chipDistance: TextView
 
     /** Back closes the orb first, then leaves radar fullscreen, then leaves the app. */
     private val back = object : OnBackPressedCallback(false) {
@@ -227,6 +246,8 @@ class V2RadarActivity : SignalRadarActivity() {
         orbProgress = findViewById(R.id.orbProgress)
         orbView = findViewById(R.id.orbView)
         orbVibrate = findViewById(R.id.orbVibrate)
+        orbDistance = findViewById(R.id.orbDistance)
+        orbDistanceToggle = findViewById(R.id.orbDistanceToggle)
 
         findViewById<RecyclerView>(R.id.v2SignalList).apply {
             layoutManager = LinearLayoutManager(this@V2RadarActivity)
@@ -265,6 +286,15 @@ class V2RadarActivity : SignalRadarActivity() {
         haptics = OrbHaptics.from(this)
         renderOrbHaptics(null)
 
+        // v2.4: the estimate switch, remembered too, and off until it is pressed.
+        distanceOn = V2Distance.isOn(prefs())
+        v2Adapter.distanceOn = distanceOn
+        nearbyAdapter.distanceOn = distanceOn
+        v2Adapter.onBadgeTap = { toggleDistance() }
+        nearbyAdapter.onBadgeTap = { toggleDistance() }
+        chipDistance = findViewById(R.id.chipDistance)
+        chipDistance.setOnClickListener { toggleDistance() }
+
         tabSignal.setOnClickListener { selectTab(Tab.SIGNALS) }
         tabNearby.setOnClickListener { selectTab(Tab.NEARBY) }
         tabRecord.setOnClickListener { selectTab(Tab.RECORD) }
@@ -278,6 +308,7 @@ class V2RadarActivity : SignalRadarActivity() {
 
         findViewById<View>(R.id.orbClose).setOnClickListener { closeOrb() }
         orbVibrate.setOnClickListener { toggleOrbHaptics() }
+        orbDistanceToggle.setOnClickListener { toggleDistance() }
         findViewById<View>(R.id.orbDetail).setOnClickListener {
             val live = orbSignalId?.let { repo.find(it) }
             if (live != null) showDetails(live)
@@ -456,6 +487,18 @@ class V2RadarActivity : SignalRadarActivity() {
                 ContextCompat.getColor(this, if (on) R.color.v2_sheet else R.color.v2_ink_soft)
             )
         }
+        // v2.4: the 📏 예상 거리 switch keeps its own state, on the second chip row.
+        findViewById<TextView>(R.id.chipDistance)?.let { chip ->
+            chip.setBackgroundResource(
+                if (distanceOn) R.drawable.bg_v2_chip_on else R.drawable.bg_v2_chip
+            )
+            chip.setTextColor(
+                ContextCompat.getColor(
+                    this,
+                    if (distanceOn) R.color.v2_sheet else R.color.v2_ink_soft
+                )
+            )
+        }
         findViewById<TextView>(R.id.statNew)?.let {
             it.setTextColor(
                 ContextCompat.getColor(this, R.color.v2_ink)
@@ -521,7 +564,8 @@ class V2RadarActivity : SignalRadarActivity() {
         calloutIcon.setImageResource(V2Look.iconFor(signal.source))
         calloutTitle.text = signal.title
         calloutSub.text = V2Look.summaryLine(signal)
-        calloutStep.text = step ?: "찾기 ›"
+        // v2.4: with 📏 on, the same pill carries the estimate too (`매우 가까움 · 50cm 이내`).
+        calloutStep.text = V2Distance.badge(signal, distanceOn) ?: "찾기 ›"
         calloutStep.setBackgroundResource(style.background)
         calloutStep.setTextColor(ContextCompat.getColor(this, style.textColor))
     }
@@ -776,6 +820,65 @@ class V2RadarActivity : SignalRadarActivity() {
     private fun prefs(): android.content.SharedPreferences =
         getSharedPreferences("signal_radar", MODE_PRIVATE)
 
+    // ------------------------------------------------- distance switch (v2.4)
+
+    /** The chip, the finder button and a row's distance pill all land here. */
+    private fun toggleDistance() = setDistanceOn(!distanceOn)
+
+    /**
+     * `📏 예상 거리` on or off, everywhere at once (지훈: "거리도 버튼을 누르면 예상을 볼수있게").
+     *
+     * It is one setting ([V2Distance.KEY_ON]), so the list rows, the top card, the finder and
+     * the detail card can never disagree: the rows are redrawn at once instead of waiting for
+     * the next 0.8 s tick, and the state survives leaving the app.
+     */
+    internal fun setDistanceOn(on: Boolean) {
+        distanceOn = on
+        V2Distance.save(prefs(), on)
+        v2Adapter.distanceOn = on
+        nearbyAdapter.distanceOn = on
+        styleChips()
+        listKey = null
+        redraw()
+        if (orbOpen) renderOrbDistance(orbSignalId?.let { repo.find(it) })
+        toast(
+            if (on) {
+                "예상 거리를 함께 보여요 · 신호 세기로 계산한 어림값이에요"
+            } else {
+                "거리 단계만 보여요"
+            }
+        )
+    }
+
+    /**
+     * The finder's estimate line and its 📏 button. With the switch off nothing is drawn under
+     * the step word, so the finder still reads as one big word on a dark screen.
+     * `metres` lets a preview paint a number without a live packet.
+     */
+    private fun renderOrbDistance(live: Signal?, metres: String? = null) {
+        val estimate = metres ?: live?.let { V2Distance.metresOf(it) }
+        val line = if (distanceOn) V2Distance.finderLine(estimate) else null
+        orbDistance.text = line.orEmpty()
+        orbDistance.visibility = if (line == null) View.GONE else View.VISIBLE
+        // On the emerald arrival screen a green button would disappear into the background,
+        // exactly like the 📳 button beside it.
+        val emerald = orbWash.alpha > 0.5f
+        orbDistanceToggle.setBackgroundResource(
+            when {
+                !distanceOn -> R.drawable.bg_v2_orb_button
+                emerald -> R.drawable.bg_v2_callout
+                else -> R.drawable.bg_v2_orb_button_on
+            }
+        )
+        orbDistanceToggle.setTextColor(
+            when {
+                !distanceOn -> ContextCompat.getColor(this, R.color.v2_orb_text)
+                emerald -> ContextCompat.getColor(this, R.color.v2_emerald_deep)
+                else -> Color.parseColor("#0A2B18")
+            }
+        )
+    }
+
     /** How many proximity taps the finder has played since it opened (v2.3). */
     internal fun orbHapticsForTest(): OrbHaptics? = haptics
 
@@ -821,7 +924,7 @@ class V2RadarActivity : SignalRadarActivity() {
     }
 
     /** One step word everywhere in v2: the list, the callout, the detail card, the orb. */
-    override fun distanceTextFor(signal: Signal): String? = V2Look.stepOf(signal)
+    override fun distanceTextFor(signal: Signal): String? = V2Distance.badge(signal, distanceOn)
 
     override fun directionDistanceText(signal: Signal, rssi: Float): String? =
         Classifier.distanceStepLabel(rssi, signal.source, signal.txPower, signal.frequencyMhz)
@@ -935,6 +1038,7 @@ class V2RadarActivity : SignalRadarActivity() {
         orbSubtitle.text = V2Look.summaryLine(live)
         orbWash.alpha = progress * 0.94f
         orbStep.text = step ?: "–"
+        renderOrbDistance(live)
         orbGuide.text = guidance(heading)
         orbProgress.text = orb.levelText()
 
@@ -968,7 +1072,8 @@ class V2RadarActivity : SignalRadarActivity() {
         scale: Float,
         heading: Float,
         peak: Float?,
-        hapticBand: Int = if (emerald > 0.5f) OrbHapticsMap.BANDS else 3
+        hapticBand: Int = if (emerald > 0.5f) OrbHapticsMap.BANDS else 3,
+        metres: String? = null
     ) {
         handler.removeCallbacks(orbTick)
         orbSignalId = signal.id
@@ -980,6 +1085,7 @@ class V2RadarActivity : SignalRadarActivity() {
         orbWash.alpha = emerald * 0.94f
         renderOrbHaptics(previewPulse(hapticBand))
         orbStep.text = step
+        renderOrbDistance(signal, metres)
         orbGuide.text = if (peak != null) {
             "${SignalDirectionTracker.bearingText(peak)} 방향이 가장 세요 · 그쪽으로 돌아 보세요"
         } else {
@@ -1050,6 +1156,17 @@ class V2RadarActivity : SignalRadarActivity() {
             dialog.dismiss()
             val live = repo.find(signal.id) ?: signal
             openOrbFinder(live)
+        }
+        // v2.4: `📏 예상 거리 보기` on the card itself. It flips the one switch and the card is
+        // drawn again with the estimate in its 대략 거리 line, so the number and the rest of the
+        // app always agree.
+        dialog.findViewById<TextView>(R.id.detailDistanceToggle)?.let { toggle ->
+            toggle.text = if (distanceOn) DETAIL_DISTANCE_HIDE else DETAIL_DISTANCE_SHOW
+            toggle.setOnClickListener {
+                setDistanceOn(!distanceOn)
+                dialog.dismiss()
+                showDetails(repo.find(signal.id) ?: signal)
+            }
         }
     }
 
@@ -1141,6 +1258,10 @@ class V2RadarActivity : SignalRadarActivity() {
     companion object {
         internal const val ADDRESS_HIDDEN = "세부 주소 보기 ▾"
         internal const val ADDRESS_SHOWN = "세부 주소 접기 ▴"
+
+        /** v2.4: the detail card's own distance switch, either way. */
+        internal const val DETAIL_DISTANCE_SHOW = "📏 예상 거리 보기"
+        internal const val DETAIL_DISTANCE_HIDE = "📏 예상 거리 접기"
 
         /** What the top card and the 기준 tab say while nothing is saved. */
         internal const val NO_BASELINE = "저장된 기준 없음"

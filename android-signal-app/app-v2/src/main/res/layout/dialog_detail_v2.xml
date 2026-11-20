@@ -91,6 +91,25 @@
             android:textColor="@color/v2_ink_soft"
             android:textSize="10.5sp"
             android:visibility="gone" />
+
+        <!-- v2.4: the distance switch right on the card, so a device's estimate can be read
+             without going back to the list (지훈: "거리도 버튼을 누르면 예상을"). -->
+        <TextView
+            android:id="@+id/detailDistanceToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_v2_step_near"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingStart="9dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="9dp"
+            android:paddingBottom="3dp"
+            android:text="📏 예상 거리 보기"
+            android:textColor="@color/v2_blue_deep"
+            android:textSize="10.5sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <TextView

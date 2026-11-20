@@ -110,7 +110,11 @@
     <!-- ===== filters: Bluetooth only (v2.3) — 전체 · 🚨 새 신호 · 📌 내 폰 연결 =====
          The Wi-Fi and 기지국 chips are gone with the radios they filtered (지훈: "와이파이랑
          기지국 안보게해주고"). Two holders are left so the shared screen class still finds
-         every id it wires, and they never take room on the screen. -->
+         every id it wires, and they never take room on the screen.
+
+         v2.4 puts `📏 예상 거리` on a second row under the filters: it is a switch, not a
+         filter, and on one row with the three chips it would cut `📌 내 폰 연결` off at 320dp
+         (지훈: "거리도 버튼을 누르면 예상을 볼수있게 해줘"). -->
     <LinearLayout
         android:id="@+id/chipRow"
         android:layout_width="match_parent"
@@ -182,6 +186,31 @@
                 android:layout_height="1dp"
                 android:text="기지국"
                 android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/chipRowSecond"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal">
+
+            <!-- v2.4: the distance switch. Off it looks like the other chips and the badges
+                 read steps only; on it turns green and every badge adds `약 1.8m` beside the
+                 step, in the list, the top card, the finder and the detail card. -->
+            <TextView
+                android:id="@+id/chipDistance"
+                android:layout_width="wrap_content"
+                android:layout_height="29dp"
+                android:background="@drawable/bg_v2_chip"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="📏 예상 거리"
+                android:textColor="@color/v2_ink_soft"
+                android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
 

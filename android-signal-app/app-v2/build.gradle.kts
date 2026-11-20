@@ -21,6 +21,13 @@ plugins {
  * scanned nor drawn anywhere — and the finder buzzes harder and faster the closer the signal
  * is, with its own 진동 switch, instead of playing a sound.
  *
+ * v2.4 answers "거리도 버튼을 누르면 예상을 볼수있게 해줘": a `📏 예상 거리` switch (the second
+ * chip row, a finder button and a pill on the detail card) writes the estimated metres beside
+ * every step — `매우 가까움 · 50cm 이내` — in the list, the top card, the finder and the detail
+ * card, and remembers the choice. Off by default, and a row's distance pill is its own tap
+ * target, so the list reads as steps until 지훈 asks for numbers. See
+ * [com.jihun.signalradar.v2.V2Distance].
+ *
  * Both tabs are here in one app (📏 거리 + 📡 내 주변 10m 레이더), and the UI is the v2 pass:
  * the empty state sits at the top of the list, the scan button reads 스캔 중지 while scanning,
  * the filter chips wrap onto two rows instead of being cut off, a card is a title plus one
@@ -38,8 +45,8 @@ android {
         applicationId = "com.jihun.signalradar.v2"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "2.3"
+        versionCode = 5
+        versionName = "2.4"
     }
 
     sourceSets {

@@ -17,6 +17,11 @@ import com.jihun.signalradar.model.SignalSource
  * One Find-My style row per signal: a coloured circular badge, the name on one line, one
  * summary line (`블루투스 · 애플`), and the distance step as a pale pill on the right.
  *
+ * v2.4: while the `📏 예상 거리` switch is on, the same pill also carries the estimate
+ * (`매우 가까움 · 50cm 이내`), wrapping onto a second line where the row is narrow. Tapping the
+ * pill asks the screen to flip that switch; tapping anywhere else on the row still opens the
+ * finder.
+
  * The shared [SignalAdapter] of the v1 apps paints a dark card and a strength meter, which
  * is the wrong language for a white sheet, so the v2 list has its own tiny adapter. The MAC
  * address is never printed here — it lives behind `세부 주소 보기 ▾` in the detail card.
@@ -25,7 +30,18 @@ class V2SignalAdapter(
     private val onClick: (Signal) -> Unit
 ) : RecyclerView.Adapter<V2SignalAdapter.Holder>() {
 
+    /** v2.4: what a tap on the distance pill does — flip the `📏 예상 거리` switch. */
+    var onBadgeTap: (() -> Unit)? = null
+
     private val items = ArrayList<Signal>()
+
+    /** v2.4: whether the pill writes the estimated metres beside the step. */
+    var distanceOn: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyDataSetChanged()
+        }
 
     init {
         setHasStableIds(true)
@@ -62,6 +78,9 @@ class V2SignalAdapter(
                 val position = bindingAdapterPosition
                 if (position != RecyclerView.NO_POSITION) onClick(items[position])
             }
+            // The badge is its own tap target: it toggles the estimate instead of opening the
+            // finder, so the two gestures never fight over one press.
+            distance?.setOnClickListener { onBadgeTap?.invoke() }
         }
 
         fun bind(signal: Signal) {
@@ -77,9 +96,12 @@ class V2SignalAdapter(
 
             val step = V2Look.stepOf(signal)
             val style = V2Look.stepStyle(step)
-            distance?.text = step ?: signal.source.label
+            distance?.text = V2Distance.badge(signal, distanceOn) ?: signal.source.label
             distance?.setBackgroundResource(style.background)
             distance?.setTextColor(ContextCompat.getColor(context, style.textColor))
+            // The estimate is longer than a step word: a touch smaller, and free to take two
+            // lines rather than pushing the name out of the row.
+            distance?.textSize = if (distanceOn && step != null) 10f else 11.5f
 
             badgeNew?.visibility = if (signal.isNew) View.VISIBLE else View.GONE
             badgeBoost?.visibility = if (signal.isBoosted) View.VISIBLE else View.GONE

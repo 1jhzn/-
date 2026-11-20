@@ -12,6 +12,22 @@
 **`전파`**(`com.jihun.signalradar.v2`, v2.5부터의 이름)입니다. 패키지가 달라서 **지웠다 다시 깔 필요 없이
 나란히 설치**됩니다. v2는 기존 앱을 덮어쓰는 업데이트가 아니라 **새 파일로 따로 설치되는 앱**입니다.
 
+## 전파 v2.6 (2026-11-20) — 찾기 화면 버튼 순서
+
+`:app-v2` · `com.jihun.signalradar.v2` · versionCode **7** · versionName **"2.6"**.
+지훈 님 요청: **"방향다시 위치와 기기상세위치 바꿔줘"**.
+
+- **찾기(오브) 화면 하단 버튼 3개** — `기기 상세` · `방향 다시` · `📏 예상 거리` →
+  **`방향 다시` · `기기 상세` · `📏 예상 거리`** 로 앞의 둘만 자리를 바꿨습니다
+  (`page_orb_v2.xml`). 버튼 id·모양·동작은 그대로이고 순서만 다릅니다.
+- 단위 테스트가 세 버튼이 **한 줄에서 왼쪽부터 `방향 다시` → `기기 상세` → `📏 예상 거리`**
+  순서로 그려지는지 확인합니다(`V2UiTest`, `V2PreviewTest`).
+- 미리보기: `app-v2/build/previews/v26-orb-buttons.png`.
+
+```bash
+./gradlew :app-v2:testDebugUnitTest :app-v2:lintDebug :app-v2:assembleDebug
+```
+
 ## 전파 v2.5 (2026-11-20) — 앱 이름 `전파`
 
 `:app-v2` · `com.jihun.signalradar.v2` · versionCode **6** · versionName **"2.5"** · 이름 **`전파`**.

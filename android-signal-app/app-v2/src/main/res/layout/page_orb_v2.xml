@@ -164,8 +164,11 @@
             android:layout_marginTop="12dp"
             android:orientation="horizontal">
 
+            <!-- v2.6 (지훈: "방향다시 위치와 기기상세위치 바꿔줘"): the row now reads
+                 방향 다시 — 기기 상세 — 📏 예상 거리. Only the order changed; each button keeps
+                 its id, its look and its tap action. -->
             <TextView
-                android:id="@+id/orbDetail"
+                android:id="@+id/orbReset"
                 android:layout_width="0dp"
                 android:layout_height="38dp"
                 android:layout_weight="1"
@@ -173,13 +176,13 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
-                android:text="기기 상세"
+                android:text="방향 다시"
                 android:textColor="@color/v2_orb_text"
                 android:textSize="11.5sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/orbReset"
+                android:id="@+id/orbDetail"
                 android:layout_width="0dp"
                 android:layout_height="38dp"
                 android:layout_marginStart="7dp"
@@ -188,7 +191,7 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center"
-                android:text="방향 다시"
+                android:text="기기 상세"
                 android:textColor="@color/v2_orb_text"
                 android:textSize="11.5sp"
                 android:textStyle="bold" />

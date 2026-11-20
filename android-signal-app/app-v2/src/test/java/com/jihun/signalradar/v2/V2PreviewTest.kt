@@ -44,6 +44,12 @@ import java.util.concurrent.TimeUnit
  *                              every row write the estimate beside the step (`매우 가까움 · 약 0.7m`)
  *  - `v24-orb-distance.png`  — the finder showing `📏 예상 50cm 이내` under the step word
  *
+ * v2.5 — `v25-home-title.png` (the header reads 전파).
+ *
+ * v2.6 (지훈: "방향다시 위치와 기기상세위치 바꿔줘"):
+ *
+ *  - `v26-orb-buttons.png`    — the finder's bottom row: 방향 다시 · 기기 상세 · 📏 예상 거리
+ *
  * Each also asserts it produced a real PNG, so a normal test run keeps them up to date.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -287,6 +293,46 @@ class V2PreviewTest {
         assertEquals(View.VISIBLE, chip.visibility)
         assertTrue("the chip must stay inside the header: chip.right=${chip.right} bar.width=${bar.width}", chip.right <= bar.width)
         assertTrue("the title must keep its own space: title.width=${title.width}", title.width > 0)
+        controller.pause().stop().destroy()
+    }
+
+    /**
+     * v2.6 (지훈: "방향다시 위치와 기기상세위치 바꿔줘"): the finder's bottom row from left to
+     * right is 방향 다시 — 기기 상세 — 📏 예상 거리. This is the screenshot the brief asks for.
+     */
+    @Test
+    fun render_the_orb_with_방향다시_first() {
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        val target = samples().first()
+        activity.previewOrb(
+            signal = target,
+            step = "매우 가까움",
+            emerald = 1f,
+            scale = 0.96f,
+            heading = 150f,
+            peak = 150f,
+            metres = "50cm 이내"
+        )
+        capture(activity, "v26-orb-buttons.png", 1233, 2673)
+
+        val reset = activity.findViewById<TextView>(R.id.orbReset)
+        val detail = activity.findViewById<TextView>(R.id.orbDetail)
+        val distance = activity.findViewById<TextView>(R.id.orbDistanceToggle)
+        val row = reset.parent as android.view.ViewGroup
+        val drawn = (0 until row.childCount).map { row.getChildAt(it) }.filterIsInstance<TextView>()
+        assertEquals(
+            listOf("방향 다시", "기기 상세", "📏 예상 거리"),
+            drawn.map { it.text.toString() }
+        )
+        assertTrue(
+            "방향 다시 must sit left of 기기 상세: reset.right=${reset.right} detail.left=${detail.left}",
+            reset.right <= detail.left
+        )
+        assertTrue(
+            "기기 상세 must sit left of 예상 거리: detail.right=${detail.right} distance.left=${distance.left}",
+            detail.right <= distance.left
+        )
         controller.pause().stop().destroy()
     }
 

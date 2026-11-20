@@ -113,7 +113,7 @@ class V2UiTest {
     // ------------------------------------------------------------- app identity
 
     @Test
-    fun it_is_a_separate_app_named_전파_with_its_own_package_name_and_the_25_version() {
+    fun it_is_a_separate_app_named_전파_with_its_own_package_name_and_the_26_version() {
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
         assertEquals("com.jihun.signalradar.v2", activity.packageName)
@@ -124,8 +124,8 @@ class V2UiTest {
         assertEquals("전파", title.text.toString())
 
         val info = activity.packageManager.getPackageInfo(activity.packageName, 0)
-        assertEquals("2.5", info.versionName)
-        assertEquals(6, info.versionCode)
+        assertEquals("2.6", info.versionName)
+        assertEquals(7, info.versionCode)
         controller.pause().stop().destroy()
     }
 
@@ -631,6 +631,56 @@ class V2UiTest {
         // 닫기 puts the app back on the list without leaving it.
         activity.findViewById<View>(R.id.orbClose).performClick()
         assertEquals(View.GONE, activity.findViewById<View>(R.id.orbPage).visibility)
+        controller.pause().stop().destroy()
+    }
+
+    /**
+     * v2.6 (지훈: "방향다시 위치와 기기상세위치 바꿔줘"): the finder's bottom row is
+     * 방향 다시 — 기기 상세 — 📏 예상 거리, both in the layout and left to right on a phone.
+     */
+    @Test
+    fun the_finder_buttons_run_방향다시_then_기기상세_then_예상거리() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(listOf(bleSignal(rssi = -44, smoothed = -44f)))
+        refresh()
+        activity.findViewById<View>(R.id.v2Callout).performClick()
+        refresh()
+
+        val reset = activity.findViewById<TextView>(R.id.orbReset)
+        val detail = activity.findViewById<TextView>(R.id.orbDetail)
+        val distance = activity.findViewById<TextView>(R.id.orbDistanceToggle)
+        assertEquals("방향 다시", reset.text.toString())
+        assertEquals("기기 상세", detail.text.toString())
+        assertEquals("📏 예상 거리", distance.text.toString())
+
+        // All three share one row, in the order 지훈 asked for.
+        val row = reset.parent as ViewGroup
+        assertEquals("the three buttons share one row", row, detail.parent)
+        assertEquals("the three buttons share one row", row, distance.parent)
+        assertEquals("방향 다시 must come first", 0, row.indexOfChild(reset))
+        assertEquals("기기 상세 must come second", 1, row.indexOfChild(detail))
+        assertEquals("📏 예상 거리 must come last", 2, row.indexOfChild(distance))
+
+        // And the row is drawn that way: three equal buttons, left to right.
+        measure(activity.findViewById(android.R.id.content), activity, 360, 780)
+        assertTrue(
+            "방향 다시 must sit left of 기기 상세: reset.right=${reset.right} detail.left=${detail.left}",
+            reset.right <= detail.left
+        )
+        assertTrue(
+            "기기 상세 must sit left of 예상 거리: detail.right=${detail.right} distance.left=${distance.left}",
+            detail.right <= distance.left
+        )
+        assertEquals("all three keep the same width", reset.width, detail.width)
+        assertEquals("all three keep the same width", reset.width, distance.width)
+        assertTrue("the row must fit the screen: distance.right=${distance.right}", distance.right <= row.width)
+
+        // The taps still do what they did: 기기 상세 opens the detail card.
+        detail.performClick()
+        assertNotNull("기기 상세 must still open the detail card", ShadowDialog.getLatestDialog())
+        ShadowDialog.getLatestDialog()?.dismiss()
         controller.pause().stop().destroy()
     }
 

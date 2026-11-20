@@ -21,6 +21,9 @@ plugins {
  * scanned nor drawn anywhere — and the finder buzzes harder and faster the closer the signal
  * is, with its own 진동 switch, instead of playing a sound.
  *
+ * v2.6 answers "방향다시 위치와 기기상세위치 바꿔줘": the finder's bottom row now reads
+ * 방향 다시 — 기기 상세 — 📏 예상 거리 (the first two swapped), with nothing else changed.
+ *
  * v2.5 answers "앱이름을 전파로 바꿔줘": the launcher label and the header title are both just
  * `전파` now (`app_name_v2`), while the package, the icon and every screen stay the same, so it
  * installs over v2.4 without uninstalling it.
@@ -49,8 +52,8 @@ android {
         applicationId = "com.jihun.signalradar.v2"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "2.5"
+        versionCode = 7
+        versionName = "2.6"
     }
 
     sourceSets {

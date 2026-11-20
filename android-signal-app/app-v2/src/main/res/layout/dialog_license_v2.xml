@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v2.7 licence card: what 지훈 asked for with "오픈소스라이선스로 해줄수있어?".
+
+       📄 오픈소스 라이선스
+       ┌──────────────────────────────────────┐
+       │ 전파 v2.7                    [MIT License] │
+       │ Copyright © 2026 이지훈 (@1jhzn)        │
+       └──────────────────────────────────────┘
+       이 앱의 코드는 누구나 자유롭게 …  (MIT 요약)
+       사용한 오픈소스 · 표준 데이터
+       · AndroidX — … (Apache License 2.0)
+       …
+       MIT License 전문          [아래로 밀어 보기]
+       ┌──────────────────────────────────────┐   ← 104dp 상자, 안에서 스크롤
+       │ MIT License  …                        │
+       └──────────────────────────────────────┘
+       [              닫기              ]
+
+     The app name/version, the copyright line, the library list and the licence text are filled
+     in from [com.jihun.signalradar.v2.V2Licenses] so the card can never drift from the APK. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_v2_dialog"
+    android:orientation="vertical"
+    android:paddingStart="18dp"
+    android:paddingTop="16dp"
+    android:paddingEnd="18dp"
+    android:paddingBottom="14dp">
+
+    <TextView
+        android:id="@+id/licenseTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="📄 오픈소스 라이선스"
+        android:textColor="@color/v2_ink"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <!-- 앱 이름 · 버전 · 제작자 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_v2_row"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="10dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/licenseApp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="전파 v2.7"
+                android:textColor="@color/v2_ink"
+                android:textSize="14.5sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/licenseCopyright"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Copyright © 2026 이지훈 (@1jhzn)"
+                android:textColor="@color/v2_ink_soft"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/licenseName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_v2_step_very"
+            android:maxLines="1"
+            android:paddingStart="10dp"
+            android:paddingTop="5dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="5dp"
+            android:text="MIT License"
+            android:textColor="@color/v2_emerald_deep"
+            android:textSize="10.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/licenseSummary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:lineSpacingExtra="2.5dp"
+        android:text="이 앱의 코드는 누구나 자유롭게 쓸 수 있어요."
+        android:textColor="@color/v2_ink_soft"
+        android:textSize="11.5sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="사용한 오픈소스 · 표준 데이터"
+        android:textColor="@color/v2_ink"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/licenseLibraries"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:lineSpacingExtra="3dp"
+        android:text="· AndroidX — core-ktx · appcompat · activity-ktx · recyclerview (Apache License 2.0)"
+        android:textColor="@color/v2_ink_soft"
+        android:textSize="10.5sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="MIT License 전문"
+            android:textColor="@color/v2_ink"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="안에서 밀어 보기 ↕"
+            android:textColor="@color/v2_ink_faint"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <ScrollView
+        android:id="@+id/licenseTextScroll"
+        android:layout_width="match_parent"
+        android:layout_height="104dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_v2_row"
+        android:padding="10dp"
+        android:scrollbars="vertical">
+
+        <TextView
+            android:id="@+id/licenseMit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:lineSpacingExtra="1.5dp"
+            android:text="MIT License"
+            android:textColor="@color/v2_ink_soft"
+            android:textSize="9sp" />
+    </ScrollView>
+
+    <TextView
+        android:id="@+id/licenseClose"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_v2_button_soft"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="닫기"
+        android:textColor="@color/v2_ink"
+        android:textSize="12.5sp"
+        android:textStyle="bold" />
+</LinearLayout>

@@ -24,6 +24,15 @@ plugins {
  * v2.6 answers "방향다시 위치와 기기상세위치 바꿔줘": the finder's bottom row now reads
  * 방향 다시 — 기기 상세 — 📏 예상 거리 (the first two swapped), with nothing else changed.
  *
+ * v2.7 does two things 지훈 asked for:
+ *
+ *  - "오픈소스라이선스로 해줄수있어?": a `📄 오픈소스 라이선스` card (the header's ⓘ on any tab,
+ *    and a named button at the bottom of the 기준 tab) with the app version, the copyright,
+ *    MIT and what the APK carries ([V2Licenses], `dialog_license_v2.xml`).
+ *  - "스캔시작을 하고 … 중지를 하고 방향을 찾고 다시 나가면 스캔이 시작되어 있어서 좀 불편해":
+ *    opening the finder no longer starts the scan behind 지훈's back, and 닫기 leaves the scan
+ *    switch exactly as he left it. The finder has its own ▶ 스캔 / ■ 중지 pill instead.
+ *
  * v2.5 answers "앱이름을 전파로 바꿔줘": the launcher label and the header title are both just
  * `전파` now (`app_name_v2`), while the package, the icon and every screen stay the same, so it
  * installs over v2.4 without uninstalling it.
@@ -52,8 +61,8 @@ android {
         applicationId = "com.jihun.signalradar.v2"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
-        versionName = "2.6"
+        versionCode = 8
+        versionName = "2.7"
     }
 
     sourceSets {

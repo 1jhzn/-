@@ -52,6 +52,26 @@
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
+            <!-- v2.7: the finder's own scan switch. 지훈 stopped the scan, walked into the
+                 finder and found it reading again after he came out; now entering the finder
+                 never turns the radios on by itself, and this pill is how they are turned on
+                 (or off) from here on purpose. -->
+            <TextView
+                android:id="@+id/orbScan"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_v2_orb_button"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingStart="11dp"
+                android:paddingEnd="11dp"
+                android:text="▶ 스캔"
+                android:textColor="@color/v2_orb_text"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
             <!-- v2.3: the nearness vibration switch, at the top where 지훈 asked for it.
                  The label also carries the band (2/5단계 …) so the screen says both whether
                  it will buzz and how close the signal already is. -->

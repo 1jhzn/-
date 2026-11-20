@@ -164,6 +164,7 @@ class V2RadarActivity : SignalRadarActivity() {
     private lateinit var orbProgress: TextView
     private lateinit var orbView: V2OrbView
     private lateinit var orbVibrate: TextView
+    private lateinit var orbScan: TextView
     private lateinit var orbDistance: TextView
     private lateinit var orbDistanceToggle: TextView
 
@@ -246,6 +247,7 @@ class V2RadarActivity : SignalRadarActivity() {
         orbProgress = findViewById(R.id.orbProgress)
         orbView = findViewById(R.id.orbView)
         orbVibrate = findViewById(R.id.orbVibrate)
+        orbScan = findViewById(R.id.orbScan)
         orbDistance = findViewById(R.id.orbDistance)
         orbDistanceToggle = findViewById(R.id.orbDistanceToggle)
 
@@ -306,8 +308,19 @@ class V2RadarActivity : SignalRadarActivity() {
 
         vibrateRow.setOnClickListener { toggleVibrate() }
 
+        // v2.7: the 📄 licence card, from the header ⓘ on any tab and from the button at the
+        // bottom of the 기준 tab.
+        findViewById<View>(R.id.v2LicenseInfo).setOnClickListener { showLicenseDialog() }
+        findViewById<View>(R.id.v2LicenseOpen).setOnClickListener { showLicenseDialog() }
+
         findViewById<View>(R.id.orbClose).setOnClickListener { closeOrb() }
         orbVibrate.setOnClickListener { toggleOrbHaptics() }
+        // v2.7: the finder's own scan switch — the only way the radios turn on from this screen.
+        orbScan.setOnClickListener {
+            toggleScan()
+            renderOrbScan()
+            renderOrb()
+        }
         orbDistanceToggle.setOnClickListener { toggleDistance() }
         findViewById<View>(R.id.orbDetail).setOnClickListener {
             val live = orbSignalId?.let { repo.find(it) }
@@ -417,6 +430,26 @@ class V2RadarActivity : SignalRadarActivity() {
             )
         )
         radar.scanning = scanning
+        renderOrbScan()
+    }
+
+    /**
+     * v2.7 — the finder's scan pill follows the one scan switch everything else uses.
+     *
+     * 지훈: "스캔시작을 하고 … 중지를 하고 방향을 찾고 다시 나가면 스캔이 시작되어 있어서 좀
+     * 불편해". Entering the finder no longer touches the switch at all; this pill reads the
+     * state the user left the app in and is the one place the finder can change it.
+     */
+    private fun renderOrbScan() {
+        if (!::orbScan.isInitialized) return
+        val on = isScanning
+        orbScan.text = if (on) ORB_SCAN_STOP else ORB_SCAN_START
+        orbScan.setBackgroundResource(
+            if (on) R.drawable.bg_v2_orb_button else R.drawable.bg_v2_orb_button_on
+        )
+        orbScan.setTextColor(
+            if (on) ContextCompat.getColor(this, R.color.v2_orb_text) else ORB_SCAN_INK
+        )
     }
 
     override fun onSignalsChanged(all: List<Signal>, newOnes: List<Signal>) {
@@ -988,8 +1021,16 @@ class V2RadarActivity : SignalRadarActivity() {
 
     // ----------------------------------------------------------------- orb
 
+    /**
+     * Opens the finder for one signal.
+     *
+     * v2.7 — it does **not** start the scan. It used to (`if (!isScanning) toggleScan()`),
+     * which is exactly what 지훈 ran into: he pressed 스캔 중지, opened the finder, came back
+     * out and the radios were reading again. The switch never moves on its own now; the
+     * finder's own [orbScan] pill is offered instead, so turning the radios back on is a tap
+     * the user makes, and 닫기 leaves everything exactly as it was found.
+     */
     internal fun openOrbFinder(signal: Signal) {
-        if (!isScanning) toggleScan()
         orbSignalId = signal.id
         orbTitle.text = signal.title
         orbSubtitle.text = V2Look.summaryLine(signal)
@@ -999,12 +1040,14 @@ class V2RadarActivity : SignalRadarActivity() {
         orbPage.visibility = View.VISIBLE
         orbOpen = true
         back.isEnabled = true
+        renderOrbScan()
         startCompass()
         renderOrbHaptics(null)
         renderOrb()
         restart(orbTick, ORB_MS)
     }
 
+    /** 닫기 / back: nothing about the scan changes on the way out (v2.7). */
     internal fun closeOrb() {
         orbOpen = false
         orbPage.visibility = View.GONE
@@ -1039,7 +1082,9 @@ class V2RadarActivity : SignalRadarActivity() {
         orbWash.alpha = progress * 0.94f
         orbStep.text = step ?: "–"
         renderOrbDistance(live)
-        orbGuide.text = guidance(heading)
+        // v2.7: while the scan is off the finder says so plainly instead of pretending the
+        // numbers are still moving — the ▶ 스캔 pill right above is the way to resume.
+        orbGuide.text = if (isScanning) guidance(heading) else ORB_SCAN_OFF_GUIDE
         orbProgress.text = orb.levelText()
 
         // v2.3: the nearness feedback is vibration (지훈: "진동만 크게해줘").
@@ -1173,6 +1218,36 @@ class V2RadarActivity : SignalRadarActivity() {
     private fun macText(address: String): String =
         if (MAC_PATTERN.matches(address.uppercase())) address.uppercase() else address
 
+    // ------------------------------------------------------------- licence (v2.7)
+
+    /**
+     * The `📄 오픈소스 라이선스` card (지훈: "오픈소스라이선스로 해줄수있어?"): app name and
+     * version, `Copyright © 2026 이지훈 (@1jhzn)`, MIT with a plain-Korean summary and the full
+     * text, and the libraries and two data tables the APK really carries ([V2Licenses]).
+     *
+     * The version is read from the installed package, so the card always names the build it is
+     * drawn in — a v2.8 APK will say v2.8 without anyone editing the layout.
+     */
+    internal fun showLicenseDialog() {
+        val dialog = Dialog(this, R.style.Theme_SignalRadar_Dialog)
+        dialog.setContentView(R.layout.dialog_license_v2)
+        dialog.findViewById<TextView>(R.id.licenseApp).text = V2Licenses.appTitle(installedVersion())
+        dialog.findViewById<TextView>(R.id.licenseCopyright).text = V2Licenses.COPYRIGHT
+        dialog.findViewById<TextView>(R.id.licenseName).text = V2Licenses.LICENSE_NAME
+        dialog.findViewById<TextView>(R.id.licenseSummary).text = V2Licenses.SUMMARY
+        dialog.findViewById<TextView>(R.id.licenseLibraries).text = V2Licenses.libraryLines()
+        dialog.findViewById<TextView>(R.id.licenseMit).text = V2Licenses.MIT_TEXT
+        dialog.findViewById<View>(R.id.licenseClose).setOnClickListener { dialog.dismiss() }
+        sizeDialog(dialog)
+    }
+
+    /** The versionName of the APK that is running, or null when the package cannot be read. */
+    private fun installedVersion(): String? = try {
+        packageManager.getPackageInfo(packageName, 0).versionName
+    } catch (e: Exception) {
+        null
+    }
+
     // --------------------------------------------------------------- utils
 
     /**
@@ -1262,6 +1337,18 @@ class V2RadarActivity : SignalRadarActivity() {
         /** v2.4: the detail card's own distance switch, either way. */
         internal const val DETAIL_DISTANCE_SHOW = "📏 예상 거리 보기"
         internal const val DETAIL_DISTANCE_HIDE = "📏 예상 거리 접기"
+
+        /**
+         * v2.7: the finder's scan pill, and the line it shows while the radios are off.
+         * `▶ 스캔` invites a tap exactly like the main screen's button does.
+         */
+        internal const val ORB_SCAN_START = "▶ 스캔"
+        internal const val ORB_SCAN_STOP = "■ 중지"
+        internal const val ORB_SCAN_OFF_GUIDE =
+            "스캔이 꺼져 있어요 · 위의 ▶ 스캔을 누르면 다시 읽어요"
+
+        /** The dark ink the emerald-on pill writes with (same as the 📳 진동 button). */
+        private val ORB_SCAN_INK = Color.parseColor("#0A2B18")
 
         /** What the top card and the 기준 tab say while nothing is saved. */
         internal const val NO_BASELINE = "저장된 기준 없음"

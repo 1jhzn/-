@@ -12,6 +12,40 @@
 **`전파`**(`com.jihun.signalradar.v2`, v2.5부터의 이름)입니다. 패키지가 달라서 **지웠다 다시 깔 필요 없이
 나란히 설치**됩니다. v2는 기존 앱을 덮어쓰는 업데이트가 아니라 **새 파일로 따로 설치되는 앱**입니다.
 
+## 전파 v2.7 (2026-11-20) — 오픈소스 라이선스 + 스캔 상태 유지
+
+`:app-v2` · `com.jihun.signalradar.v2` · versionCode **8** · versionName **"2.7"**.
+지훈 님 요청: **"오픈소스라이선스로 해줄수있어?"**, 그리고 **"스캔시작을 하고 원하는거에 들어가서
+중지를 하고 방향을 찾고 다시 나가면 스캔이 시작되어 있어서 좀 불편해"**.
+
+### 1. `📄 오픈소스 라이선스` 카드
+
+- **여는 곳 두 군데** — 모든 탭에서 보이는 헤더의 **`ⓘ`**, 그리고 `기준` 탭 `새 신호 진동` 줄 아래
+  **`📄 오픈소스 라이선스`** 버튼(`dialog_license_v2.xml`). 둘 다 같은 카드를 엽니다.
+- **카드 내용** — `전파 v2.7` (버전은 설치된 패키지에서 읽으므로 APK와 어긋나지 않음),
+  `Copyright © 2026 이지훈 (@1jhzn)`, `MIT License` + 쉬운 한국어 요약 + MIT 전문(104dp 상자 안에서 스크롤),
+  사용한 오픈소스·표준 데이터 목록(AndroidX · Kotlin Standard Library — Apache 2.0,
+  IEEE OUI 등록부 · Bluetooth SIG Company Identifiers).
+  목록은 **APK에 실제로 들어간 것만** 적었습니다 — 테스트용 JUnit/Robolectric은 빠지고,
+  이 앱은 AndroidX·AppCompat만 쓰므로 Material Components도 넣지 않았습니다.
+- 문구는 `V2Licenses.kt` 한 곳에 모아 두어 테스트가 그대로 확인합니다.
+
+### 2. 스캔 상태가 지훈 님이 둔 그대로 유지
+
+- **원인** — 찾기(오브) 화면을 열 때 `openOrbFinder()`가 `if (!isScanning) toggleScan()`으로
+  스캔을 대신 켰습니다. 스캔을 끈 채로 찾기 화면에 들어갔다 나오면 스캔이 다시 돌아서
+  메인 화면 버튼이 `■ 스캔 중지`로 돌아와 있었습니다.
+- **고침** — 찾기 화면은 이제 스캔 스위치를 건드리지 않습니다. `닫기`/뒤로가기로 나와도, 앱을
+  다른 곳에 다녀와(`onStart`/`onResume`)도 지훈 님이 둔 상태 그대로예요.
+- **찾기 화면 안의 `▶ 스캔` / `■ 중지` 알약** — 찾기 화면에서 직접 켜고 끌 수 있게 헤더에 넣었습니다.
+  꺼져 있으면 `스캔이 꺼져 있어요 · 위의 ▶ 스캔을 누르면 다시 읽어요`라고 안내합니다.
+- 테스트 — `V2UiTest`에 스캔 상태 유지 테스트 3개(끈 채 들어가고 나오기·다녀오기, 켠 채로
+  다녀오기, 찾기의 알약으로 켜고 끄기). 미리보기: `app-v2/build/previews/v27-license-dialog.png`.
+
+```bash
+./gradlew :app-v2:testDebugUnitTest :app-v2:lintDebug :app-v2:assembleDebug
+```
+
 ## 전파 v2.6 (2026-11-20) — 찾기 화면 버튼 순서
 
 `:app-v2` · `com.jihun.signalradar.v2` · versionCode **7** · versionName **"2.6"**.

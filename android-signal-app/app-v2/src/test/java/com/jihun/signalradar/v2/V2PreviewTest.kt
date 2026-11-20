@@ -50,6 +50,10 @@ import java.util.concurrent.TimeUnit
  *
  *  - `v26-orb-buttons.png`    — the finder's bottom row: 방향 다시 · 기기 상세 · 📏 예상 거리
  *
+ * v2.7 (지훈: "오픈소스라이선스로 해줄수있어?"):
+ *
+ *  - `v27-license-dialog.png` — the 📄 오픈소스 라이선스 card
+ *
  * Each also asserts it produced a real PNG, so a normal test run keeps them up to date.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -333,6 +337,37 @@ class V2PreviewTest {
             "기기 상세 must sit left of 예상 거리: detail.right=${detail.right} distance.left=${distance.left}",
             detail.right <= distance.left
         )
+        controller.pause().stop().destroy()
+    }
+
+    /**
+     * v2.7 (지훈: "오픈소스라이선스로 해줄수있어?"): the licence card — 앱 이름·버전·제작자,
+     * MIT with its summary and full text, and the libraries the APK carries. This is the
+     * screenshot the brief asks for.
+     */
+    @Test
+    fun render_the_licence_card() {
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        activity.findViewById<View>(R.id.v2LicenseInfo).performClick()
+        val dialog = ShadowDialog.getLatestDialog()
+        assertTrue("the licence card must open", dialog != null)
+        renderDialog(dialog, "v27-license-dialog.png")
+
+        // The card must actually show the four things it exists for, not just be a panel.
+        assertEquals("전파 v2.7", dialog.findViewById<TextView>(R.id.licenseApp).text.toString())
+        assertEquals(
+            "Copyright © 2026 이지훈 (@1jhzn)",
+            dialog.findViewById<TextView>(R.id.licenseCopyright).text.toString()
+        )
+        assertEquals("MIT License", dialog.findViewById<TextView>(R.id.licenseName).text.toString())
+        assertTrue(
+            dialog.findViewById<TextView>(R.id.licenseLibraries).text.contains("Apache License 2.0")
+        )
+        // The whole card fits a 411dp-wide phone without its text being clipped away.
+        val card = dialog.findViewById<View>(R.id.licenseClose)
+        assertTrue("the close button must be on the card: bottom=${card.bottom}", card.bottom > 0)
+        dialog.dismiss()
         controller.pause().stop().destroy()
     }
 

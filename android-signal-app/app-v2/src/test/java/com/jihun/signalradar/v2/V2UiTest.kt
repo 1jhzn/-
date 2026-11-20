@@ -124,8 +124,8 @@ class V2UiTest {
         assertEquals("전파", title.text.toString())
 
         val info = activity.packageManager.getPackageInfo(activity.packageName, 0)
-        assertEquals("2.6", info.versionName)
-        assertEquals(7, info.versionCode)
+        assertEquals("2.7", info.versionName)
+        assertEquals(8, info.versionCode)
         controller.pause().stop().destroy()
     }
 
@@ -822,6 +822,185 @@ class V2UiTest {
         dialog.findViewById<android.widget.EditText>(R.id.nameDialogInput).setText(name)
         dialog.findViewById<View>(R.id.nameDialogOk).performClick()
         refresh()
+    }
+
+    // ------------------------------------------------------ licence card (v2.7)
+
+    /**
+     * 지훈: "오픈소스라이선스로 해줄수있어?" — the header's ⓘ opens the card, and the card
+     * names the app and its version, the author, MIT (summary + full text) and the libraries
+     * that are really in the APK.
+     */
+    @Test
+    fun the_header_info_button_opens_the_licence_card() {
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+
+        activity.findViewById<View>(R.id.v2LicenseInfo).performClick()
+        val dialog = ShadowDialog.getLatestDialog()
+        assertNotNull("ⓘ must open the licence card", dialog)
+
+        assertEquals(
+            "📄 오픈소스 라이선스",
+            dialog.findViewById<TextView>(R.id.licenseTitle).text.toString()
+        )
+        // 앱 이름 · 버전 · 제작자 — the version comes from the package that is running.
+        assertEquals("전파 v2.7", dialog.findViewById<TextView>(R.id.licenseApp).text.toString())
+        val copyright = dialog.findViewById<TextView>(R.id.licenseCopyright).text.toString()
+        assertEquals("Copyright © 2026 이지훈 (@1jhzn)", copyright)
+        assertTrue(copyright.contains("이지훈") && copyright.contains("1jhzn") && copyright.contains("2026"))
+
+        // 적용 라이선스: name, plain-Korean summary and the full MIT text.
+        assertEquals("MIT License", dialog.findViewById<TextView>(R.id.licenseName).text.toString())
+        val summary = dialog.findViewById<TextView>(R.id.licenseSummary).text.toString()
+        assertTrue("the summary must say what MIT allows: $summary", summary.contains("자유롭게"))
+        val mit = dialog.findViewById<TextView>(R.id.licenseMit).text.toString()
+        assertTrue("the card must carry the MIT text itself", mit.startsWith("MIT License"))
+        assertTrue(mit.contains("Permission is hereby granted"))
+        assertTrue(mit.contains("Copyright (c) 2026 이지훈 (1jhzn)"))
+        assertTrue(mit.contains("WITHOUT WARRANTY OF ANY KIND"))
+
+        // 사용한 오픈소스·표준 데이터: every bundled library and table, with its licence.
+        val libraries = dialog.findViewById<TextView>(R.id.licenseLibraries).text.toString()
+        for (expected in listOf(
+            "AndroidX",
+            "Apache License 2.0",
+            "Kotlin Standard Library",
+            "IEEE OUI",
+            "Bluetooth SIG"
+        )) {
+            assertTrue("the library list must name $expected: $libraries", libraries.contains(expected))
+        }
+
+        // 닫기 puts the card away without touching anything else.
+        dialog.findViewById<View>(R.id.licenseClose).performClick()
+        assertFalse("닫기 must close the card", dialog.isShowing)
+        controller.pause().stop().destroy()
+    }
+
+    /** The same card from the 기준 tab's named button, at the bottom of the page. */
+    @Test
+    fun the_record_tab_offers_the_licence_by_name() {
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        activity.findViewById<View>(R.id.tabRecord).performClick()
+
+        val button = activity.findViewById<TextView>(R.id.v2LicenseOpen)
+        assertEquals("📄 오픈소스 라이선스", button.text.toString())
+        assertEquals(View.VISIBLE, button.visibility)
+
+        button.performClick()
+        val dialog = ShadowDialog.getLatestDialog()
+        assertNotNull("기준 탭의 라이선스 버튼도 같은 카드를 열어야 합니다", dialog)
+        assertEquals("전파 v2.7", dialog.findViewById<TextView>(R.id.licenseApp).text.toString())
+        dialog.dismiss()
+        controller.pause().stop().destroy()
+    }
+
+    @Test
+    fun the_licence_title_falls_back_to_the_plain_name_without_a_version() {
+        assertEquals("전파", V2Licenses.appTitle(null))
+        assertEquals("전파", V2Licenses.appTitle("   "))
+        assertEquals("전파 v2.7", V2Licenses.appTitle("2.7"))
+    }
+
+    // --------------------------------------- the scan stays where 지훈 left it (v2.7)
+
+    /**
+     * 지훈: "스캔시작을 하고 원하는거에 들어가서 중지를 하고 방향을 찾고 다시 나가면 스캔이
+     * 시작되어 있어서 좀 불편해".
+     *
+     * Stopped is stopped: opening the finder does not start the radios, leaving it does not
+     * start them either, and neither does coming back to the app afterwards.
+     */
+    @Test
+    fun the_finder_never_starts_the_scan_again_after_a_stop() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        val repo = repoOf(activity)
+        repo.upsert(listOf(bleSignal()))
+        refresh()
+
+        val button = activity.findViewById<TextView>(R.id.btnScan)
+        button.performClick()
+        assertEquals("■ 스캔 중지", button.text.toString())
+        button.performClick()
+        assertEquals("▶ 스캔 시작", button.text.toString())
+
+        // Into the finder from the top callout: the switch does not move.
+        activity.findViewById<View>(R.id.v2Callout).performClick()
+        assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.orbPage).visibility)
+        assertEquals("opening the finder must not start the scan", "▶ 스캔 시작", button.text.toString())
+        assertEquals("▶ 스캔", activity.findViewById<TextView>(R.id.orbScan).text.toString())
+        assertTrue(
+            "the finder must say the scan is off: ${activity.findViewById<TextView>(R.id.orbGuide).text}",
+            activity.findViewById<TextView>(R.id.orbGuide).text.contains("스캔이 꺼져 있어요")
+        )
+
+        // Out again with 닫기: still stopped.
+        activity.findViewById<View>(R.id.orbClose).performClick()
+        assertEquals(View.GONE, activity.findViewById<View>(R.id.orbPage).visibility)
+        assertEquals("닫기 must not start the scan", "▶ 스캔 시작", button.text.toString())
+
+        // Another app and back (onStart/onResume): still stopped.
+        controller.pause().stop().start().resume()
+        refresh()
+        assertEquals("resuming the app must not start the scan", "▶ 스캔 시작", button.text.toString())
+        controller.pause().stop().destroy()
+    }
+
+    /** A scan that is running keeps running through the finder, and 닫기 leaves it running. */
+    @Test
+    fun a_running_scan_survives_a_trip_through_the_finder() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(listOf(bleSignal()))
+        refresh()
+
+        val button = activity.findViewById<TextView>(R.id.btnScan)
+        button.performClick()
+        assertEquals("■ 스캔 중지", button.text.toString())
+
+        activity.findViewById<View>(R.id.v2Callout).performClick()
+        assertEquals("■ 스캔 중지", button.text.toString())
+        assertEquals("■ 중지", activity.findViewById<TextView>(R.id.orbScan).text.toString())
+
+        activity.findViewById<View>(R.id.orbClose).performClick()
+        assertEquals("■ 스캔 중지", button.text.toString())
+        controller.pause().stop().destroy()
+    }
+
+    /** The finder's own pill flips the one switch the main screen uses, both ways. */
+    @Test
+    fun the_finder_scan_pill_is_the_only_way_to_start_or_stop_from_the_finder() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(listOf(bleSignal()))
+        refresh()
+
+        val button = activity.findViewById<TextView>(R.id.btnScan)
+        activity.findViewById<View>(R.id.v2Callout).performClick()
+        val pill = activity.findViewById<TextView>(R.id.orbScan)
+        assertEquals("▶ 스캔", pill.text.toString())
+
+        pill.performClick()
+        assertEquals("■ 스캔 중지", button.text.toString())
+        assertEquals("■ 중지", pill.text.toString())
+        assertFalse(
+            "the finder must stop saying the scan is off",
+            activity.findViewById<TextView>(R.id.orbGuide).text.contains("스캔이 꺼져 있어요")
+        )
+
+        pill.performClick()
+        assertEquals("▶ 스캔 시작", button.text.toString())
+        assertEquals("▶ 스캔", pill.text.toString())
+
+        activity.findViewById<View>(R.id.orbClose).performClick()
+        assertEquals("▶ 스캔 시작", button.text.toString())
+        controller.pause().stop().destroy()
     }
 
     // ------------------------------------------------------------- helpers

@@ -12,7 +12,11 @@
        [ 🧹 기준 초기화 · 저장한 기준 모두 지우기 ]
 
      The save button and the list header are one line each so three cards and the reset button
-     all fit in the sheet; the page still scrolls when more 기준 are saved. -->
+     all fit in the sheet; the page still scrolls when more 기준 are saved.
+
+     v2.7 (지훈: "오픈소스라이선스로 해줄수있어?"): a `📄 오픈소스 라이선스` button sits under the
+     진동 row, so the licence card is one tap away by its own name — not only behind the
+     header's ⓘ. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -136,6 +140,22 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
+        <!-- v2.7: the licence card, as a named button so it can be found without knowing what
+             the header's ⓘ means (지훈: "오픈소스라이선스로 해줄수있어?"). -->
+        <TextView
+            android:id="@+id/v2LicenseOpen"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_v2_button_soft"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:text="📄 오픈소스 라이선스"
+            android:textColor="@color/v2_ink_soft"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -144,5 +164,6 @@
             android:text="· 지금 잡히는 신호를 이름 붙여 저장해 두면, 그 뒤에 처음 나타난 신호만 🚨 새 신호로 알려드려요.\n· 기준 카드를 누르면 그 기준으로 바로 바뀌어요.\n· 이름을 읽는 시간은 0.7초로 끊고, 읽는 중에는 ⏹ 읽기 멈추기로 바로 끝낼 수 있어요.\n· 기기 상세의 MAC 주소는 ‘세부 주소 보기’를 눌러야 보여요.\n· 거리는 신호 세기로 계산한 어림값이라 벽·사람에 따라 달라져요."
             android:textColor="@color/v2_ink_faint"
             android:textSize="10.5sp" />
+
     </LinearLayout>
 </ScrollView>

@@ -22,3 +22,13 @@
 1. `Build and deployment`의 Source를 **Deploy from a branch**로 설정
 2. Branch를 **main** / **/(root)** 로 선택 후 Save
 3. 몇 분 후 `https://1jhzn.github.io/omok-game` 주소로 전 세계 어디서든 바로 접속하여 플레이할 수 있습니다!
+
+## 📄 라이선스 (License)
+
+이 저장소의 코드는 **MIT License**로 공개합니다. 누구나 자유롭게 쓰고, 고치고, 나눠 줄 수 있고,
+그 대신 **저작권 표시와 허가 문구를 함께 남겨 주세요**. 어떤 보증도 없이 ‘있는 그대로’ 나눕니다.
+
+- 전문: [`LICENSE`](LICENSE) · 안드로이드 앱 쪽 사본: [`android-signal-app/LICENSE`](android-signal-app/LICENSE)
+- `Copyright (c) 2026 이지훈 (1jhzn)`
+- 앱 안에서도 같은 내용을 볼 수 있습니다 — `전파` 앱 → `기준` 탭 맨 아래 **`📄 오픈소스 라이선스`**
+  (또는 헤더의 **ⓘ**)를 누르면 앱 버전·제작자·MIT 전문·사용한 오픈소스 목록이 뜹니다.

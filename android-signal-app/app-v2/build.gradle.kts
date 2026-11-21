@@ -33,6 +33,15 @@ plugins {
  *    opening the finder no longer starts the scan behind 지훈's back, and 닫기 leaves the scan
  *    switch exactly as he left it. The finder has its own ▶ 스캔 / ■ 중지 pill instead.
  *
+ * v2.10 answers 지훈's report that ordinary devices were being called near: "내 근처 50cm 안에
+ * 없는데 있다고 나와". v2.9's -85 dBm at 1 m reference made every usual -59…-67 dBm device
+ * 1–3 m away read under half a metre. v2.10 moves the reference to -74 dBm at 1 m (n = 3.0, an
+ * advertised 1 m value 15 dB below its own number), so `50cm 이내` needs about -64.9 dBm or
+ * stronger, -68 dBm is `가까움 · 약 1.6m`, and -86 dBm is `보통 · 약 2.5m`. The finder's taps
+ * moved with it (`-99 / -92 / -83 / -74 / -65` dBm), so 5/5 still means truly beside the phone.
+ * The numbers live in [com.jihun.signalradar.v2.V2Calibration] /
+ * [com.jihun.signalradar.identify.Classifier.INDOOR_BLE]; nothing to tune by hand.
+ *
  * v2.9 answers 지훈's own measurement ("책상 위 탭이 1m인데 -86 dBm · 약 4.1m"): the reference
  * moves to -85 dBm at 1 m with n = 3.0, so -86 dBm is `가까움 · 약 1.1m` on every screen
  * (list rows, top card, finder, detail card, 10 m radar) and an advertised 1 m value keeps the
@@ -72,8 +81,8 @@ android {
         applicationId = "com.jihun.signalradar.v2"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10
-        versionName = "2.9"
+        versionCode = 11
+        versionName = "2.10"
     }
 
     sourceSets {

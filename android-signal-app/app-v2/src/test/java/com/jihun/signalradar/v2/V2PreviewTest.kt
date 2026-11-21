@@ -13,6 +13,7 @@ import com.jihun.signalradar.identify.Classifier
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -64,8 +65,15 @@ import java.util.concurrent.TimeUnit
  * v2.9 (지훈's own measurement: a tablet 0.8–1 m away read -86 dBm · 약 4.1m):
  *
  *  - `v29-distance-list.png`   — the list with 📏 on, the Galaxy tablet he measured at -86 dBm
- *                                now reading `가까움 · 약 1.1m`
+ *                                reading `가까움 · 약 1.1m`
  *  - `v29-distance-finder.png` — the finder on that same tablet: `가까움 / 📏 예상 약 1.1m`
+ *
+ * v2.10 (지훈: "내 근처 50cm 안에 없는데 있다고 나와"):
+ *
+ *  - `v210-distance-list.png`   — the same room on the -74 dBm at 1 m scale: the ordinary
+ *                                devices at -68…-86 dBm read `약 0.6…2.5m`, and `50cm 이내`
+ *                                appears only on the one device that really is beside the phone
+ *  - `v210-distance-finder.png` — the finder on the -68 dBm device: `📏 예상 약 0.6m`
  *
  * Each also asserts it produced a real PNG, so a normal test run keeps them up to date.
  */
@@ -372,12 +380,14 @@ class V2PreviewTest {
     }
 
     /**
-     * v2.9 — the measurement the version exists for: the Galaxy tablet on 지훈's desk, 0.8–1 m
-     * away, heard at -86 dBm. v2.8 wrote `보통 · 약 4.1m`; on the measured -85 dBm scale it is
-     * `가까움 · 약 1.1m`.
+     * v2.10 — 지훈: "내 근처 50cm 안에 없는데 있다고 나와". The same room he measured the tablet in,
+     * on the -74 dBm at 1 m scale: the tablet 0.8–1 m away (-86 dBm) reads `보통 · 약 2.5m`,
+     * the buds off the desk (-74) a metre, the unnamed tile (-68) two thirds — and `50cm 이내`
+     * only on the one device that is actually in his hand (-56 dBm). The -68 dBm row, the level
+     * that v2.9 wrote as `50cm 이내`, is the regression this screenshot shows fixed.
      */
     @Test
-    fun render_the_v29_measured_distance_on_the_list() {
+    fun render_the_v210_distance_that_stops_calling_everything_half_a_metre() {
         grantScanPermissions()
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
@@ -392,59 +402,66 @@ class V2PreviewTest {
             ),
             signal(
                 "ble:tile", SignalSource.BLE, "이름 없는 블루투스 기기", "제조사 미확인", "타일(Tile)",
-                "02:00:00:00:00:00", -98
+                "02:00:00:00:00:00", -68
+            ),
+            signal(
+                "ble:hand", SignalSource.BLE, "내 손안의 이어폰", "애플", "에어팟",
+                "F8:1E:DF:12:34:56", -56, txPower = -52, connected = true, bonded = true
             )
         )
         repoOf(activity).upsert(room)
         refresh()
         activity.findViewById<View>(R.id.chipDistance).performClick()
         refresh()
-        capture(activity, "v29-distance-list.png", 1233, 2673)
+        capture(activity, "v210-distance-list.png", 1233, 2673)
 
-        // The tablet he measured sits about a metre away, not four.
-        assertEquals("가까움 · 약 1.1m", V2Distance.badge(room.first(), true))
-        assertEquals("매우 가까움 · 50cm 이내", V2Distance.badge(room[1], true))
-        assertEquals("보통 · 약 2.7m", V2Distance.badge(room[2], true))
+        // The room scale: half a metre in the hand, two thirds of a metre, a metre, two and a
+        // half — and `50cm 이내` only on the device really beside the phone.
+        assertEquals("보통 · 약 2.5m", V2Distance.badge(room[0], true))
+        assertEquals("가까움 · 약 1m", V2Distance.badge(room[1], true))
+        assertEquals("매우 가까움 · 약 0.6m", V2Distance.badge(room[2], true))
+        assertEquals("매우 가까움 · 50cm 이내", V2Distance.badge(room[3], true))
+        // The false alarm this version exists for: -68 dBm is not beside the phone.
+        assertNotEquals("50cm 이내", V2Distance.metresOf(room[2]))
+
         val list = activity.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.v2SignalList)
-        assertEquals("전체 3", activity.findViewById<TextView>(R.id.chipAll).text.toString())
-        val drawn = (0 until list.childCount).map { list.getChildAt(it) }
-        val tabletRow = drawn.first { row ->
-            row.findViewById<TextView>(R.id.itemTitle)?.text?.toString()?.startsWith("삼성 기기") == true
+        assertEquals("전체 4", activity.findViewById<TextView>(R.id.chipAll).text.toString())
+        val badges = (0 until list.childCount).mapNotNull { index ->
+            list.getChildAt(index).findViewById<TextView>(R.id.itemDistance)?.text?.toString()
         }
-        assertEquals(
-            "가까움 · 약 1.1m",
-            tabletRow.findViewById<TextView>(R.id.itemDistance).text.toString()
-        )
+        assertEquals("only the hand-held device is 50cm 이내: $badges", 1, badges.count { it.contains("50cm 이내") })
+        assertTrue("the room rows must write metres: $badges", badges.any { it.contains("약 1m") })
+        assertTrue("the tablet must write metres: $badges", badges.any { it.contains("약 2.5m") })
         controller.pause().stop().destroy()
     }
 
-    /** The same tablet inside the finder: `가까움` with `📏 예상 약 1.1m` under it. */
+    /** The same -68 dBm device inside the finder: `매우 가까움` with `📏 예상 약 0.6m` under it. */
     @Test
-    fun render_the_v29_measured_distance_in_the_finder() {
+    fun render_the_v210_distance_in_the_finder() {
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
-        val tablet = signal(
-            "ble:tablet", SignalSource.BLE, "삼성 기기(갤럭시…", "삼성전자",
-            "삼성 기기(갤럭시·버즈·워치)", "5C:0A:5B:00:00:01", -86, bonded = true
+        val tile = signal(
+            "ble:tile", SignalSource.BLE, "이름 없는 블루투스 기기", "제조사 미확인", "타일(Tile)",
+            "02:00:00:00:00:00", -68
         )
-        val metres = V2Calibration.metresText(tablet)
+        val metres = V2Calibration.metresText(tile)
         activity.findViewById<View>(R.id.chipDistance).performClick()
         activity.previewOrb(
-            signal = tablet,
-            step = V2Calibration.stepLabel(tablet) ?: "가까움",
+            signal = tile,
+            step = V2Calibration.stepLabel(tile) ?: "가까움",
             emerald = 0f,
             scale = 0.62f,
             heading = 150f,
             peak = 150f,
             metres = metres
         )
-        capture(activity, "v29-distance-finder.png", 1233, 2673)
-        assertEquals("약 1.1m", metres)
+        capture(activity, "v210-distance-finder.png", 1233, 2673)
+        assertEquals("약 0.6m", metres)
         assertEquals(
-            "📏 예상 약 1.1m",
+            "📏 예상 약 0.6m",
             activity.findViewById<TextView>(R.id.orbDistance).text.toString()
         )
-        assertEquals("가까움", activity.findViewById<TextView>(R.id.orbStep).text.toString())
+        assertEquals("매우 가까움", activity.findViewById<TextView>(R.id.orbStep).text.toString())
         controller.pause().stop().destroy()
     }
 
@@ -503,7 +520,7 @@ class V2PreviewTest {
         renderDialog(dialog, "v27-license-dialog.png")
 
         // The card must actually show the four things it exists for, not just be a panel.
-        assertEquals("전파 v2.9", dialog.findViewById<TextView>(R.id.licenseApp).text.toString())
+        assertEquals("전파 v2.10", dialog.findViewById<TextView>(R.id.licenseApp).text.toString())
         assertEquals(
             "Copyright © 2026 이지훈 (@1jhzn)",
             dialog.findViewById<TextView>(R.id.licenseCopyright).text.toString()

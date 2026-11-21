@@ -37,9 +37,10 @@ data class OrbPulse(
  *    climbs one step, so every band is distinguishable by feel alone
  *
  * v2.9 moved every threshold down by 18 dB, with the distance scale: 지훈's phone measures 1 m
- * at -85 dBm (it used to be -67), so the same physical distances sit 18 dB lower. Without the
- * move the finder would have gone silent at 1.7 m — a device in the next room is not "in your
- * hand", but neither is it worth nothing.
+ * at -85 dBm (it used to be -67), so the same physical distances sat 18 dB lower. v2.10 then had
+ * to bring them back up by 11 dB, because its distance scale moved back up to -74 dBm at 1 m:
+ * `-99 / -92 / -83 / -74 / -65` dBm. Without that move the finder would cry "in your hand"
+ * about the same ordinary devices the metres had stopped calling half a metre away.
  *
  * The mapping is plain arithmetic so it is tested on the JVM; [OrbHaptics] only keeps the
  * rhythm, and [OrbMotor] is the one place that touches the phone's motor.
@@ -48,11 +49,14 @@ object OrbHapticsMap {
 
     const val BANDS = 5
 
-    /** Quieter than this: no vibration at all. About 7 m on the v2.9 measured scale. */
-    const val SILENT_DBM = -110f
+    /** Quieter than this: no vibration at all. About 6.8 m on the v2.10 scale. */
+    const val SILENT_DBM = -99f
 
-    /** At and above this the finder is in reach — about half a metre (0.5 m at -76). */
-    const val NEAR_DBM = -63f
+    /**
+     * At and above this the finder is at full strength — about half a metre, the same line
+     * the metres draw `50cm 이내`: band 5 starts one dB above it (see [UPPER_DBM]).
+     */
+    const val NEAR_DBM = -65f
 
     /** Out of 255. The faintest tap is felt, but it is not a buzz in the pocket. */
     const val MIN_AMPLITUDE = 40
@@ -68,12 +72,14 @@ object OrbHapticsMap {
     /**
      * The dBm each band reaches up to, weakest band first: -88 dBm is band 3.
      *
-     * v2.9 readings, on the -85 dBm at 1 m scale: band 1 ends at -103 dBm (≈4.6 m), band 2 at
-     * -94 (≈2 m), band 3 at -85 (1 m), band 4 at -76 (0.5 m), and band 5 is in your hand.
+     * v2.10 readings, on the -74 dBm at 1 m scale: band 1 ends at -92 dBm (≈4 m), band 2 at
+     * -83 (≈2 m), band 3 at -74 (1 m), band 4 at -65 (half a metre). Band 5 is the one the
+     * distance also calls `50cm 이내` — -64 dBm and stronger — so the hardest 5/5 tap only
+     * happens for a device truly beside the phone, not for one a metre or two away.
      * The far bands are wider because a distant Bluetooth reading jumps around, while a
      * packet from your own hand is steady.
      */
-    private val UPPER_DBM = floatArrayOf(-103f, -94f, -85f, -76f, Float.POSITIVE_INFINITY)
+    private val UPPER_DBM = floatArrayOf(-92f, -83f, -74f, -65f, Float.POSITIVE_INFINITY)
 
     private val AMPLITUDE = intArrayOf(48, 92, 140, 196, MAX_AMPLITUDE)
     private val DURATION_MS = longArrayOf(22L, 33L, 46L, 64L, MAX_DURATION_MS)

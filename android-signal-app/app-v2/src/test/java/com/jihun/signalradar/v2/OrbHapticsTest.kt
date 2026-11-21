@@ -14,11 +14,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * 전파 감지기 v2.3 — the finder's nearness feedback (지훈: "진동만 크게해줘").
+ * 전파 v2.10 — the finder's nearness feedback (지훈: "진동만 크게해줘").
  *
  *  - the dBm → five-band mapping: silence when far, and amplitude · length · gap all climbing
- *    as the signal gets closer (v2.9: every threshold sits 18 dB lower, with the -85 dBm at
- *    1 m distance scale)
+ *    as the signal gets closer. v2.10 moved every threshold back up 11 dB with its -74 dBm at
+ *    1 m distance scale (`-99 / -92 / -83 / -74 / -65`), so band 5 — the hardest 5/5 tap — only
+ *    happens at the level the metres also call `50cm 이내`
  *  - the rhythm: one tap per band gap, faster when nearer, silent when very far, nothing left
  *    running after [OrbHaptics.stop]
  *  - the fallback for a motor without amplitude control, which carries strength in length
@@ -29,25 +30,28 @@ class OrbHapticsMapTest {
     @Test
     fun a_signal_at_the_edge_of_hearing_is_silent() {
         assertNull("nothing heard", OrbHapticsMap.pulseFor(null))
-        assertNull("-113 dBm is out of reach", OrbHapticsMap.pulseFor(-113f))
-        assertNull("-110 dBm is exactly the edge", OrbHapticsMap.pulseFor(-110f))
-        assertEquals(0, OrbHapticsMap.bandOf(-110f))
+        assertNull("-104 dBm is out of reach", OrbHapticsMap.pulseFor(-104f))
+        assertNull("-99 dBm is exactly the edge", OrbHapticsMap.pulseFor(-99f))
+        assertEquals(0, OrbHapticsMap.bandOf(-99f))
         assertEquals(0, OrbHapticsMap.bandOf(null))
-        // v2.9: a device 2 m away (-95 dBm on the measured scale) still buzzes faintly —
-        // before, that level was 8 m and the finder was silent there.
-        assertNotNull("-95 dBm is a room away, not silence", OrbHapticsMap.pulseFor(-95f))
+        // A device two metres away (-80 dBm on the v2.10 scale) still buzzes faintly.
+        assertNotNull("-80 dBm is a room away, not silence", OrbHapticsMap.pulseFor(-80f))
     }
 
     @Test
     fun the_five_bands_are_spread_over_the_levels_a_phone_hears() {
-        assertEquals(1, OrbHapticsMap.bandOf(-109f))
-        assertEquals(1, OrbHapticsMap.bandOf(-104f))
-        assertEquals(2, OrbHapticsMap.bandOf(-98f))
-        assertEquals(3, OrbHapticsMap.bandOf(-88f))
-        assertEquals(4, OrbHapticsMap.bandOf(-80f))
-        assertEquals(5, OrbHapticsMap.bandOf(-70f))
-        // The measured tablet 1 m away and the phone's own hand are the same band 3.
-        assertEquals(3, OrbHapticsMap.bandOf(-86f))
+        assertEquals(1, OrbHapticsMap.bandOf(-98f))
+        assertEquals(1, OrbHapticsMap.bandOf(-93f))
+        assertEquals(2, OrbHapticsMap.bandOf(-88f))
+        assertEquals(3, OrbHapticsMap.bandOf(-80f))
+        assertEquals(4, OrbHapticsMap.bandOf(-70f))
+        assertEquals(5, OrbHapticsMap.bandOf(-64f))
+        // The measured tablet two and a half metres away (-86 dBm) is band 2, and a device
+        // half a metre away (-65 dBm) has not yet reached the hardest tap: that is band 5 at
+        // -64 dBm, where the metres say `50cm 이내`.
+        assertEquals(2, OrbHapticsMap.bandOf(-86f))
+        assertEquals(4, OrbHapticsMap.bandOf(-65f))
+        assertEquals(5, OrbHapticsMap.bandOf(-64f))
         assertEquals("a device in your hand", 5, OrbHapticsMap.bandOf(-30f))
         assertEquals(OrbHapticsMap.BANDS, OrbHapticsMap.bandOf(-30f))
     }
@@ -55,7 +59,7 @@ class OrbHapticsMapTest {
     @Test
     fun getting_closer_means_a_harder_longer_and_more_often_tap() {
         var previous: OrbPulse? = null
-        for (level in listOf(-109f, -98f, -88f, -80f, -70f)) {
+        for (level in listOf(-98f, -90f, -80f, -70f, -60f)) {
             val pulse = OrbHapticsMap.pulseFor(level)
             assertNotNull("level $level must buzz", pulse)
             val now = pulse!!
@@ -80,8 +84,8 @@ class OrbHapticsMapTest {
 
     @Test
     fun the_numbers_stay_inside_the_range_a_motor_and_a_person_accept() {
-        val far = OrbHapticsMap.pulseFor(-109f)!!
-        val near = OrbHapticsMap.pulseFor(-63f)!!
+        val far = OrbHapticsMap.pulseFor(-98f)!!
+        val near = OrbHapticsMap.pulseFor(-64f)!!
 
         assertTrue("far is faint but felt: ${far.amplitude}", far.amplitude in 40..70)
         assertEquals("in your hand: full strength", OrbHapticsMap.MAX_AMPLITUDE, near.amplitude)
@@ -100,9 +104,9 @@ class OrbHapticsMapTest {
     @Test
     fun proximity_runs_from_zero_to_one_over_the_same_range() {
         assertEquals(0f, OrbHapticsMap.proximity(null), 0.001f)
-        assertEquals(0f, OrbHapticsMap.proximity(-110f), 0.001f)
-        assertEquals(0.5f, OrbHapticsMap.proximity(-86.5f), 0.01f)
-        assertEquals(1f, OrbHapticsMap.proximity(-63f), 0.001f)
+        assertEquals(0f, OrbHapticsMap.proximity(-99f), 0.001f)
+        assertEquals(0.5f, OrbHapticsMap.proximity(-82f), 0.01f)
+        assertEquals(1f, OrbHapticsMap.proximity(-65f), 0.001f)
         assertEquals("clamped at the top", 1f, OrbHapticsMap.proximity(-20f), 0.001f)
     }
 
@@ -115,7 +119,7 @@ class OrbHapticsMapTest {
         assertTrue("and clearly longer than far: $far → $near", near > far * 3)
         // The real bands, end to end.
         val bands = (1..OrbHapticsMap.BANDS).map { band ->
-            val pulse = OrbHapticsMap.pulseFor(-111f + band * 8f)!!
+            val pulse = OrbHapticsMap.pulseFor(-100f + band * 8f)!!
             OrbHapticsMap.fallbackDurationMs(pulse.durationMs)
         }
         assertEquals("five different lengths", 5, bands.distinct().size)
@@ -148,7 +152,7 @@ class OrbHapticsRhythmTest {
         // The finder ticks every 160 ms; band 3 waits 820 ms.
         var taps = 0
         repeat(10) {
-            haptics.onLevel(-88f)
+            haptics.onLevel(-80f)
             taps = motor.taps.size
             now += 160L
         }
@@ -169,8 +173,8 @@ class OrbHapticsRhythmTest {
             }
             return motor.taps.size
         }
-        val far = tapsIn(-104f, 5_000L)
-        val near = tapsIn(-68f, 5_000L)
+        val far = tapsIn(-92f, 5_000L)
+        val near = tapsIn(-60f, 5_000L)
         assertTrue("far: $far taps in 5 s", far in 2..5)
         assertTrue("near: $near taps in 5 s", near >= 10)
         assertTrue("closer must buzz more often: $far → $near", near > far * 2)
@@ -178,11 +182,11 @@ class OrbHapticsRhythmTest {
 
     @Test
     fun a_far_signal_never_touches_the_motor_and_the_button_still_knows_the_band() {
-        assertNull(haptics.onLevel(-113f))
+        assertNull(haptics.onLevel(-101f))
         assertEquals(0, haptics.band)
         assertTrue(motor.taps.isEmpty())
 
-        val pulse = haptics.onLevel(-88f)
+        val pulse = haptics.onLevel(-80f)
         assertNotNull(pulse)
         assertEquals(3, pulse!!.band)
         assertEquals(3, haptics.band)
@@ -191,10 +195,10 @@ class OrbHapticsRhythmTest {
 
     @Test
     fun stop_silences_the_motor_and_the_next_reading_taps_at_once() {
-        haptics.onLevel(-68f)
+        haptics.onLevel(-60f)
         assertEquals(1, motor.taps.size)
         now += 100L
-        haptics.onLevel(-68f)
+        haptics.onLevel(-60f)
         assertEquals("too soon for a second tap", 1, motor.taps.size)
 
         haptics.stop()
@@ -202,15 +206,15 @@ class OrbHapticsRhythmTest {
         assertEquals(0, haptics.band)
         assertNull(haptics.lastPulse)
 
-        haptics.onLevel(-68f)
+        haptics.onLevel(-60f)
         assertEquals("a fresh start taps immediately", 2, motor.taps.size)
     }
 
     @Test
     fun the_band_is_reported_even_between_taps_so_the_button_can_show_it() {
-        haptics.onLevel(-98f)
+        haptics.onLevel(-88f)
         now += 100L
-        val pulse = haptics.onLevel(-98f)
+        val pulse = haptics.onLevel(-88f)
         assertEquals(2, pulse?.band)
         assertEquals(2, haptics.band)
         assertEquals("no second tap yet", 1, motor.taps.size)
@@ -250,6 +254,6 @@ class AndroidMotorTest {
         motor.buzz(40L, 200)
         motor.cancel()
         val haptics = OrbHaptics(motor)
-        assertEquals(4, haptics.onLevel(-80f)?.band)
+        assertEquals(4, haptics.onLevel(-70f)?.band)
     }
 }

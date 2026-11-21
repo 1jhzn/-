@@ -4,20 +4,24 @@ import com.jihun.signalradar.identify.Classifier
 import com.jihun.signalradar.model.Signal
 
 /**
- * v2.9 — 지훈's own measurement: "책상 위 탭이 1m인데 -86 dBm · 예상 약 4.1m".
+ * v2.10 — "내 근처 50cm 안에 없는데 있다고 나와": the middle of v2.8 and v2.9.
  *
- * v2.8 wrote its metres from a room reference of -67 dBm with n = 3.1. That was still too far:
- * a Galaxy tablet sitting 0.8–1 m away on the desk read -86 dBm and the finder called it 4.1 m.
- * v2.9 puts the reference where his phone actually is — `-85 dBm` at 1 m — and uses n = 3.0,
- * so the same reading is now `가까움 · 약 1.1m`:
+ * v2.9 had put the room reference at `-85 dBm` at 1 m, the level his phone showed for a tablet
+ * on the desk. That made a metre a metre, but ordinary devices 1–3 m away — a usual -59…-67 dBm
+ * output heard at -68…-76 dBm — came out under half a metre, so the list said `50cm 이내` about
+ * things that were not beside the phone at all.
  *
- *  - `-55 … -80 dBm` (in your hand, right beside it): `매우 가까움`, `50cm 이내` … `약 0.7m`
- *  - `-86 dBm` (the tablet on the desk, 0.8–1 m): `가까움 · 약 1.1m`
- *  - `-92 dBm` (across the room): `가까움 · 약 1.7m`
- *  - `-98 dBm` (through a wall): `보통 · 약 2.7m`
+ * v2.10 uses `-74 dBm` at 1 m with n = 3.0, so `50cm 이내` needs about `-64.9 dBm` or stronger
+ * — a device truly in his hand:
  *
- * An advertised 1 m value is still believed only in -78…-48 dBm, and gets the same 26 dB taken
- * off (−59 − 26 = −85), so a device that publishes its own 1 m power and one that does not sit
+ *  - `-64 dBm` and up (in your hand): `매우 가까움 · 50cm 이내`
+ *  - `-68 dBm` (a metre and a half): `가까움 · 약 1.6m`, not `50cm 이내`
+ *  - `-74 dBm`: `가까움 · 약 1m`
+ *  - `-80 dBm`: `가까움 · 약 1.6m`
+ *  - `-86 dBm`: `보통 · 약 2.5m`
+ *
+ * An advertised 1 m value is still believed only in -78…-48 dBm, and gets the same 15 dB taken
+ * off (−59 − 15 = −74), so a device that publishes its own 1 m power and one that does not sit
  * on one scale instead of two ([Classifier.INDOOR_BLE] holds the numbers).
  *
  * The whole app uses this: the list rows and the top card ([V2Look], [V2Distance]), the finder's

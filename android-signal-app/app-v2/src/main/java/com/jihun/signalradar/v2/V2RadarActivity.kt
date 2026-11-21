@@ -65,11 +65,16 @@ import kotlin.math.roundToInt
  *  - The distance pill on a row is its own tap target: it flips the switch, while the rest of
  *    the row still opens the finder.
  *
- * v2.9 (지훈's own measurement: a tablet 0.8–1 m away read -86 dBm · 약 4.1m): every distance on
- * this screen — the list rows, the top card, the finder's step word and 📏 예상 line, the
- * detail card and the 10 m radar's dots — comes from [V2Calibration]'s measured model
- * (-85 dBm at 1 m, n = 3.0, advertised 1 m values believed only in -78…-48 dBm and put on the
- * same -85 scale), so that tablet now reads `가까움 · 약 1.1m`. There is no switch for it:
+ * v2.10 (지훈: "내 근처 50cm 안에 없는데 있다고 나와"): the same shared model, now at -74 dBm at
+ * 1 m (n = 3.0, advertised 1 m values believed only in -78…-48 dBm and put on the same -74
+ * scale), so a usual device 1–2 m away reads `가까움 · 약 1.2…1.6m` instead of `50cm 이내`, and
+ * `50cm 이내` needs a real -64.9 dBm or stronger. Nothing on this screen reads a level on its
+ * own: every place a distance appears is [V2Calibration].
+ *
+ * v2.9 (지훈's own measurement: a tablet 0.8–1 m away read -86 dBm · 약 4.1m) moved every
+ * distance on this screen — the list rows, the top card, the finder's step word and 📏 예상
+ * line, the detail card and the 10 m radar's dots — onto a -85 dBm at 1 m reference. That fixed
+ * the metre and overshot the half metre, which v2.10 corrects. There is no switch for it:
  * this is simply how far things say they are.
  *
  * v2.8 (지훈: "전파 2.7 거리가 너무 안 맞아" → "멀어") first moved the estimate off the
@@ -1185,14 +1190,15 @@ class V2RadarActivity : SignalRadarActivity() {
 
     /** The pulse a preview paints for a band, so a screenshot shows real numbers. */
     private fun previewPulse(band: Int): OrbPulse? {
-        // One level per band on the v2.9 measured scale (v2.9 moved every threshold 18 dB down,
-        // so these levels have to move with them or the button shows the wrong band).
+        // One level per band on the v2.10 scale (-74 dBm at 1 m): band 1 ends at -92, band 2 at
+        // -83, band 3 at -74, band 4 at -65, band 5 is 50cm 이내. These levels have to move with
+        // the thresholds or the preview button shows a band the signal never reaches.
         val level = when (band) {
-            1 -> -106f
-            2 -> -98f
-            3 -> -88f
-            4 -> -80f
-            5 -> -66f
+            1 -> -97f
+            2 -> -88f
+            3 -> -78f
+            4 -> -70f
+            5 -> -60f
             else -> return null
         }
         return OrbHapticsMap.pulseFor(level)

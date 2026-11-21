@@ -160,9 +160,9 @@ class V2DistanceTest {
 
         // The row's badge and the top card both carry the estimate.
         val badge = firstRow(activity).findViewById<TextView>(R.id.itemDistance)
-        assertEquals("매우 가까움 · 50cm 이내", badge.text.toString())
+        assertEquals("매우 가까움 · 약 0.5m", badge.text.toString())
         assertEquals(
-            "매우 가까움 · 50cm 이내",
+            "매우 가까움 · 약 0.5m",
             activity.findViewById<TextView>(R.id.v2CalloutStep).text.toString()
         )
 
@@ -189,12 +189,12 @@ class V2DistanceTest {
             "매우 가까움 · 50cm 이내",
             V2Distance.badge(bleSignal(rssi = -40), true)
         )
-        // v2.9: on 지훈's measured scale (-85 dBm at 1 m, n = 3.0) -59 dBm from a device
-        // advertising -52 dBm at 1 m is in your hand, not the 1.8 m the free-space model wrote.
-        assertEquals("매우 가까움 · 50cm 이내", V2Distance.badge(bleSignal(rssi = -59), true))
-        assertEquals("매우 가까움 · 약 0.6m", V2Distance.badge(bleSignal(rssi = -72), true))
+        // v2.10: on the -74 dBm at 1 m scale -59 dBm from a device advertising -52 dBm at 1 m is
+        // about half a metre away, and -72 dBm is a metre and a half — not v2.9's half metre.
+        assertEquals("매우 가까움 · 약 0.5m", V2Distance.badge(bleSignal(rssi = -59), true))
+        assertEquals("가까움 · 약 1.5m", V2Distance.badge(bleSignal(rssi = -72), true))
         // Off is the step word alone, exactly as v2.3 wrote it.
-        assertEquals("매우 가까움", V2Distance.badge(bleSignal(rssi = -72), false))
+        assertEquals("가까움", V2Distance.badge(bleSignal(rssi = -72), false))
         // A base station has no distance worth writing, so no badge and no estimate.
         val cell = bleSignal().copy(source = SignalSource.CELL, address = "1234")
         assertEquals(null, V2Distance.badge(cell, true))
@@ -220,7 +220,7 @@ class V2DistanceTest {
         refresh()
         assertTrue(V2Distance.isOn(prefs(again)))
         assertEquals(
-            "매우 가까움 · 50cm 이내",
+            "매우 가까움 · 약 0.5m",
             firstRow(again).findViewById<TextView>(R.id.itemDistance).text.toString()
         )
         second.pause().stop().destroy()
@@ -300,7 +300,7 @@ class V2DistanceTest {
     fun the_detail_card_switches_the_estimate_from_its_own_pill() {
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
-        val signal = bleSignal(rssi = -59)
+        val signal = bleSignal(rssi = -56)
         repoOf(activity).upsert(listOf(signal))
 
         showDetails(activity, signal)

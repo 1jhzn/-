@@ -33,6 +33,12 @@ plugins {
  *    opening the finder no longer starts the scan behind 지훈's back, and 닫기 leaves the scan
  *    switch exactly as he left it. The finder has its own ▶ 스캔 / ■ 중지 pill instead.
  *
+ * v2.9 answers 지훈's own measurement ("책상 위 탭이 1m인데 -86 dBm · 약 4.1m"): the reference
+ * moves to -85 dBm at 1 m with n = 3.0, so -86 dBm is `가까움 · 약 1.1m` on every screen
+ * (list rows, top card, finder, detail card, 10 m radar) and an advertised 1 m value keeps the
+ * same offset. The numbers live in [com.jihun.signalradar.v2.V2Calibration] /
+ * [com.jihun.signalradar.identify.Classifier.INDOOR_BLE]; nothing to tune by hand.
+ *
  * v2.8 answers "전파 2.7 거리가 너무 안 맞아" → "멀어": the Bluetooth estimate now uses the
  * tuned indoor model in [com.jihun.signalradar.v2.V2Calibration] — -67 dBm at 1 m, n = 3.1, and
  * an advertised 1 m value believed only in -78…-48 dBm — on every screen (list rows, top card,
@@ -66,8 +72,8 @@ android {
         applicationId = "com.jihun.signalradar.v2"
         minSdk = 26
         targetSdk = 34
-        versionCode = 9
-        versionName = "2.8"
+        versionCode = 10
+        versionName = "2.9"
     }
 
     sourceSets {

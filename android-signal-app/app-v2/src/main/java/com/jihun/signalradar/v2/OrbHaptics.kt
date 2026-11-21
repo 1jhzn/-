@@ -36,6 +36,11 @@ data class OrbPulse(
  *  - each band's amplitude (48 → 255 of 255), length (22 ms → 88 ms) and gap (1.5 s → 0.38 s)
  *    climbs one step, so every band is distinguishable by feel alone
  *
+ * v2.9 moved every threshold down by 18 dB, with the distance scale: 지훈's phone measures 1 m
+ * at -85 dBm (it used to be -67), so the same physical distances sit 18 dB lower. Without the
+ * move the finder would have gone silent at 1.7 m — a device in the next room is not "in your
+ * hand", but neither is it worth nothing.
+ *
  * The mapping is plain arithmetic so it is tested on the JVM; [OrbHaptics] only keeps the
  * rhythm, and [OrbMotor] is the one place that touches the phone's motor.
  */
@@ -43,11 +48,11 @@ object OrbHapticsMap {
 
     const val BANDS = 5
 
-    /** Quieter than this: no vibration at all. Roughly 10 m away in open air. */
-    const val SILENT_DBM = -92f
+    /** Quieter than this: no vibration at all. About 7 m on the v2.9 measured scale. */
+    const val SILENT_DBM = -110f
 
-    /** At and above this the finder is in reach — about half a metre. */
-    const val NEAR_DBM = -45f
+    /** At and above this the finder is in reach — about half a metre (0.5 m at -76). */
+    const val NEAR_DBM = -63f
 
     /** Out of 255. The faintest tap is felt, but it is not a buzz in the pocket. */
     const val MIN_AMPLITUDE = 40
@@ -61,11 +66,14 @@ object OrbHapticsMap {
     const val MIN_GAP_MS = 380L
 
     /**
-     * The dBm each band reaches up to, weakest band first: -70 dBm is band 3.
+     * The dBm each band reaches up to, weakest band first: -88 dBm is band 3.
+     *
+     * v2.9 readings, on the -85 dBm at 1 m scale: band 1 ends at -103 dBm (≈4.6 m), band 2 at
+     * -94 (≈2 m), band 3 at -85 (1 m), band 4 at -76 (0.5 m), and band 5 is in your hand.
      * The far bands are wider because a distant Bluetooth reading jumps around, while a
      * packet from your own hand is steady.
      */
-    private val UPPER_DBM = floatArrayOf(-85f, -76f, -67f, -58f, Float.POSITIVE_INFINITY)
+    private val UPPER_DBM = floatArrayOf(-103f, -94f, -85f, -76f, Float.POSITIVE_INFINITY)
 
     private val AMPLITUDE = intArrayOf(48, 92, 140, 196, MAX_AMPLITUDE)
     private val DURATION_MS = longArrayOf(22L, 33L, 46L, 64L, MAX_DURATION_MS)

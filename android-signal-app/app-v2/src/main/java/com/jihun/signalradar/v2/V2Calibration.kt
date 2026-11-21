@@ -4,22 +4,21 @@ import com.jihun.signalradar.identify.Classifier
 import com.jihun.signalradar.model.Signal
 
 /**
- * v2.8 — 지훈: "전파 2.7 거리가 너무 안 맞아" → "멀어".
+ * v2.9 — 지훈's own measurement: "책상 위 탭이 1m인데 -86 dBm · 예상 약 4.1m".
  *
- * The metres v2.7 wrote were the shared free-space estimate: -59 dBm at 1 m with n = 2.8. A
- * phone in a room never sees that: the hand, the case, the walls and the furniture take their
- * cut before the signal has travelled anywhere, so a pair of earbuds on the desk reads -50 and
- * a device across the room reads -80 — and the old formula turned those into 1.8 m and 5.6 m.
- * Every v2 screen said "멀어" for things that were right there.
+ * v2.8 wrote its metres from a room reference of -67 dBm with n = 3.1. That was still too far:
+ * a Galaxy tablet sitting 0.8–1 m away on the desk read -86 dBm and the finder called it 4.1 m.
+ * v2.9 puts the reference where his phone actually is — `-85 dBm` at 1 m — and uses n = 3.0,
+ * so the same reading is now `가까움 · 약 1.1m`:
  *
- * This is the one place that decides the numbers the v2 screens write, and they use the tuned
- * indoor model ([Classifier.INDOOR_BLE]) instead of the textbook one:
+ *  - `-55 … -80 dBm` (in your hand, right beside it): `매우 가까움`, `50cm 이내` … `약 0.7m`
+ *  - `-86 dBm` (the tablet on the desk, 0.8–1 m): `가까움 · 약 1.1m`
+ *  - `-92 dBm` (across the room): `가까움 · 약 1.7m`
+ *  - `-98 dBm` (through a wall): `보통 · 약 2.7m`
  *
- *  - `-67 dBm` at 1 m, `n = 3.1`, and an advertised 1 m value is believed only in
- *    `-78…-48 dBm` (a device that puts its 0 m output in that field used to be read as a weak
- *    1 m value and pushed several metres too far).
- *  - Both paths — the room reference and a device's own advertised value — get the same 8 dB
- *    of indoor loss taken off, so they stay on one scale.
+ * An advertised 1 m value is still believed only in -78…-48 dBm, and gets the same 26 dB taken
+ * off (−59 − 26 = −85), so a device that publishes its own 1 m power and one that does not sit
+ * on one scale instead of two ([Classifier.INDOOR_BLE] holds the numbers).
  *
  * The whole app uses this: the list rows and the top card ([V2Look], [V2Distance]), the finder's
  * step word and 📏 예상 line, the detail card, and the 10 m radar's dot positions.
@@ -55,13 +54,32 @@ object V2Calibration {
     fun stepLabel(signal: Signal): String? = stepLabel(level(signal), signal)
 
     /** The step word for a level of one signal (the finder measures a fresher level than the row). */
-    fun stepLabel(rssi: Float, signal: Signal): String? = Classifier.distanceStepLabel(
-        rssi,
-        signal.source,
-        signal.txPower,
-        signal.frequencyMhz,
-        INDOOR
-    )
+    fun stepLabel(rssi: Float, signal: Signal): String? {
+        val metres = Classifier.distanceMeters(
+            rssi.toDouble(),
+            signal.source,
+            signal.txPower,
+            signal.frequencyMhz,
+            INDOOR
+        ) ?: return null
+        return stepOf(metres)
+    }
+
+    /**
+     * `매우 가까움` … `아주 멀어요` from a distance, on v2's own edges.
+     *
+     * The word has to agree with the number beside it: on 지훈's measured scale a level of
+     * -98 dBm (through a wall) is 2.7 m, and the shared 3 m edge would still call that
+     * `가까움` while the row says 2.7 m. So the near/mid edge sits at 2.2 m here — the words are
+     * the same five, and `Classifier.distanceStep` is untouched for the other two apps.
+     */
+    fun stepOf(metres: Double): String = when {
+        metres < 1.0 -> "매우 가까움"
+        metres < 2.2 -> "가까움"
+        metres < 8.0 -> "보통"
+        metres < 20.0 -> "멀어요"
+        else -> "아주 멀어요"
+    }
 
     fun stepLabel(rssi: Int, signal: Signal): String? = stepLabel(rssi.toFloat(), signal)
 

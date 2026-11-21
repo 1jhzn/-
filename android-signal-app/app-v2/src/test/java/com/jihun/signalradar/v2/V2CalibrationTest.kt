@@ -11,19 +11,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * 전파 감지기 v2.8 — 지훈: "전파 2.7 거리가 너무 안 맞아" → "멀어".
+ * 전파 v2.9 — 지훈's own measurement: a Galaxy tablet 0.8–1 m away read `-86 dBm` and v2.8
+ * called it `보통 · 약 4.1m`.
  *
- * The tuned indoor model checked on its own, without a screen:
+ * The measured model checked on its own, without a screen:
  *
- *  - a device heard at -70 … -95 dBm now sits at a believable room distance instead of one
- *    several metres further than it is
- *  - a device advertising its own 1 m power gets the same 8 dB indoor loss, so both paths share
- *    one scale
- *  - a 0 m output value (-30 … -45) is no longer read as "very weak at 1 m", the bug that made
- *    metres explode
+ *  - `-86 dBm` (the tablet on his desk) is now about a metre: `가까움 · 약 1.1m`
+ *  - `-92 dBm` is `가까움 · 약 1.7m` and `-98 dBm` (through a wall) is `보통 · 약 2.7m`
+ *  - `-55 … -80 dBm` (in his hand, right beside it) is `매우 가까움`, `50cm 이내` … `약 0.7m`
+ *  - a device advertising its own 1 m power gets the same 26 dB offset, so both paths share
+ *    the one -85 dBm scale (a usual -59 dBm advertisement lands exactly on the room reference)
+ *  - a 0 m output value (-30 … -45, or +12) is still not read as a 1 m level
  *  - Wi-Fi and the older apps keep the numbers they had
- *  - the 10 m radar is fed the same tuned metres, so a device at -95 dBm is no longer pushed
- *    off the ring it actually belongs inside
+ *  - the 10 m radar is fed the same measured metres
  */
 class V2CalibrationTest {
 
@@ -65,61 +65,72 @@ class V2CalibrationTest {
     // ------------------------------------------------------------ the numbers
 
     @Test
-    fun a_room_level_now_reads_as_a_room_distance() {
-        // No advertised 1 m value: the tuned room reference (-67 dBm, n = 3.1) decides.
-        assertEquals("약 1.2m", V2Calibration.metresText(ble(rssi = -70)))
-        assertEquals("약 2.6m", V2Calibration.metresText(ble(rssi = -80)))
-        assertEquals("약 3.8m", V2Calibration.metresText(ble(rssi = -85)))
-        assertEquals("약 5.5m", V2Calibration.metresText(ble(rssi = -90)))
+    fun the_tablet_he_measured_at_86_dbm_is_about_a_metre_away() {
+        // The regression this version exists for: 0.8–1 m on the desk, heard at -86 dBm.
+        val tablet = ble(rssi = -86, address = "5C:0A:5B:00:00:01")
 
-        assertEquals("가까움", V2Calibration.stepLabel(ble(rssi = -70)))
-        assertEquals("보통", V2Calibration.stepLabel(ble(rssi = -85)))
-        assertEquals("보통", V2Calibration.stepLabel(ble(rssi = -90)))
+        assertEquals("가까움", V2Calibration.stepLabel(tablet))
+        assertEquals("약 1.1m", V2Calibration.metresText(tablet))
+        assertEquals("가까움 · 약 1.1m", V2Distance.badge(tablet, true))
+
+        val metres = V2Calibration.metres(tablet) ?: 0.0
+        assertTrue("$metres m must be a metre or so", metres in 0.9..1.2)
     }
 
     @Test
-    fun every_room_level_is_closer_than_the_free_space_estimate_it_replaced() {
-        // What v2.7 said for the same levels, and what v2.8 says now.
-        for (rssi in listOf(-60, -70, -80, -85, -90, -95)) {
-            val before = Classifier.distanceMeters(rssi.toDouble(), SignalSource.BLE) ?: 0.0
-            val after = V2Calibration.metres(ble(rssi = rssi)) ?: 0.0
-            assertTrue(
-                "$rssi dBm: v2.7 said ${"%.1f".format(before)}m, v2.8 says ${"%.1f".format(after)}m",
-                after < before
-            )
-        }
+    fun the_room_levels_read_at_the_measured_scale() {
+        // -85 dBm at 1 m, n = 3.0: 30 dB per tenfold distance.
+        assertEquals("50cm 이내", V2Calibration.metresText(ble(rssi = -70)))
+        assertEquals("약 0.7m", V2Calibration.metresText(ble(rssi = -80)))
+        assertEquals("약 1m", V2Calibration.metresText(ble(rssi = -85)))
+        assertEquals("약 1.1m", V2Calibration.metresText(ble(rssi = -86)))
+        assertEquals("약 1.7m", V2Calibration.metresText(ble(rssi = -92)))
+        assertEquals("약 2.7m", V2Calibration.metresText(ble(rssi = -98)))
+
+        assertEquals("매우 가까움", V2Calibration.stepLabel(ble(rssi = -70)))
+        assertEquals("매우 가까움", V2Calibration.stepLabel(ble(rssi = -80)))
+        assertEquals("가까움", V2Calibration.stepLabel(ble(rssi = -86)))
+        assertEquals("가까움", V2Calibration.stepLabel(ble(rssi = -92)))
+        assertEquals("보통", V2Calibration.stepLabel(ble(rssi = -98)))
     }
 
     @Test
     fun the_strongest_levels_are_in_your_hand() {
+        // -55 … -80 dBm: in the hand, right beside it.
+        for (rssi in listOf(-55, -65, -74, -80)) {
+            assertEquals("$rssi dBm is in your hand", V2Look.VERY_NEAR, V2Calibration.stepLabel(ble(rssi = rssi)))
+        }
+        assertEquals("50cm 이내", V2Calibration.metresText(ble(rssi = -55)))
+        assertEquals("약 0.7m", V2Calibration.metresText(ble(rssi = -80)))
         assertEquals("50cm 이내", V2Calibration.metresText(ble(rssi = -40, txPower = -52)))
         assertEquals(V2Look.VERY_NEAR, V2Calibration.stepLabel(ble(rssi = -40, txPower = -52)))
         assertEquals("50cm 이내", V2Calibration.metresText(ble(rssi = -30)))
     }
 
     @Test
-    fun an_advertised_one_metre_value_gets_the_same_indoor_loss_as_the_room_reference() {
-        // -52 dBm at 1 m in free space is about -60 dBm at 1 m in 지훈's room.
-        assertEquals("약 0.9m", V2Calibration.metresText(ble(rssi = -59, txPower = -52)))
-        assertEquals("약 2.4m", V2Calibration.metresText(ble(rssi = -72, txPower = -52)))
-        // Both paths agree at the middle of the range: an advertisement of -67 dBm is the
-        // room's own 1 m level, so the estimate must be about a metre either way.
-        val fromAdvertisement = V2Calibration.metres(ble(rssi = -70, txPower = -59)) ?: 0.0
-        val fromRoomReference = V2Calibration.metres(ble(rssi = -70)) ?: 0.0
-        assertTrue(
-            "advertised=${"%.2f".format(fromAdvertisement)} room=${"%.2f".format(fromRoomReference)}",
-            kotlin.math.abs(fromAdvertisement - fromRoomReference) < 0.1
-        )
+    fun an_advertised_one_metre_value_gets_the_same_offset_as_the_room_reference() {
+        // A usual -59 dBm advertisement is exactly the room's 1 m level (-59 - 26 = -85).
+        assertEquals("50cm 이내", V2Calibration.metresText(ble(rssi = -59, txPower = -52)))
+        assertEquals("약 0.6m", V2Calibration.metresText(ble(rssi = -72, txPower = -52)))
+        for (rssi in listOf(-70, -86, -95)) {
+            val fromAdvertisement = V2Calibration.metres(ble(rssi = rssi, txPower = -59)) ?: 0.0
+            val fromRoomReference = V2Calibration.metres(ble(rssi = rssi)) ?: 0.0
+            assertEquals(
+                "$rssi dBm: both paths must share one scale",
+                fromRoomReference,
+                fromAdvertisement,
+                0.001
+            )
+        }
     }
 
     @Test
     fun a_zero_metre_output_is_not_read_as_a_weak_one_metre_value() {
-        // Apple and some chips advertise their antenna output (0 m) in the same field. v2.7
-        // believed -45 dBm there and pushed the device metres past where it was.
-        val bogus = V2Calibration.metres(ble(rssi = -70, txPower = -45)) ?: 0.0
-        val plain = V2Calibration.metres(ble(rssi = -70)) ?: 0.0
+        // Apple and some chips advertise their antenna output (0 m) in the same field.
+        val bogus = V2Calibration.metres(ble(rssi = -86, txPower = -45)) ?: 0.0
+        val plain = V2Calibration.metres(ble(rssi = -86)) ?: 0.0
         assertEquals("an out-of-range txPower is ignored", plain, bogus, 0.001)
-        assertEquals("약 1.2m", V2Calibration.metresText(ble(rssi = -70, txPower = -45)))
+        assertEquals("약 1.1m", V2Calibration.metresText(ble(rssi = -86, txPower = -45)))
         assertTrue("+12 dBm is still not a 1 m level", !V2Calibration.isOneMetreTxPower(12))
         assertTrue("-30 dBm is not a 1 m level", !V2Calibration.isOneMetreTxPower(-30))
         assertTrue("-52 dBm is a 1 m level", V2Calibration.isOneMetreTxPower(-52))
@@ -142,8 +153,8 @@ class V2CalibrationTest {
     }
 
     @Test
-    fun the_screens_and_the_badge_read_the_same_tuned_number() {
-        for (rssi in listOf(-45, -59, -70, -85, -95)) {
+    fun the_screens_and_the_badge_read_the_same_measured_number() {
+        for (rssi in listOf(-45, -59, -70, -85, -86, -95)) {
             val signal = ble(rssi = rssi, txPower = -52)
             assertEquals(V2Calibration.stepLabel(signal), V2Look.stepOf(signal))
             assertEquals(
@@ -161,20 +172,20 @@ class V2CalibrationTest {
             V2Distance.finderLine(V2Calibration.metresText(ble(rssi = -68)))
         )
         assertNotEquals(
-            Classifier.distanceLabel(-70, SignalSource.BLE),
-            V2Calibration.metresText(ble(rssi = -70))
+            Classifier.distanceLabel(-86, SignalSource.BLE),
+            V2Calibration.metresText(ble(rssi = -86))
         )
     }
 
     // --------------------------------------------------------------- the radar
 
     @Test
-    fun the_ten_metre_radar_uses_the_tuned_distance_so_room_devices_stay_on_the_ring() {
+    fun the_ten_metre_radar_uses_the_measured_distance() {
         val nearby = ble(rssi = -95, address = "AA:BB:CC:DD:EE:01")
         val mid = ble(rssi = -85, address = "AA:BB:CC:DD:EE:03")
         val far = ble(rssi = -100, address = "AA:BB:CC:DD:EE:02")
 
-        // v2.7 pushed a -95 dBm device to 19 m, off the 10 m radar entirely.
+        // On the shared free-space default a -95 dBm device was pushed past the 10 m ring.
         val before = Classifier.distanceMeters(-95.0, SignalSource.BLE) ?: 0.0
         assertTrue("v2.7 said ${"%.1f".format(before)}m", before > NearbyRadarMath.LIMIT_METRES)
 
@@ -183,11 +194,12 @@ class V2CalibrationTest {
             { signal -> V2Calibration.metres(signal) },
             { null }
         )
-        assertEquals("the two devices inside 10 m are drawn", 2, blips.size)
-        assertEquals(listOf(mid.id, nearby.id), blips.map { it.signal.id })
-        assertEquals(3.8f, blips.first().metres, 0.05f)
-        assertEquals(8.0f, blips[1].metres, 0.05f)
-        assertEquals("8m", NearbyRadarMath.metreText(blips[1].metres))
+        assertEquals("all three are inside the room scale", 3, blips.size)
+        assertEquals(listOf(mid.id, nearby.id, far.id), blips.map { it.signal.id })
+        assertEquals(1.0f, blips[0].metres, 0.05f)
+        assertEquals(2.15f, blips[1].metres, 0.05f)
+        assertEquals(3.16f, blips[2].metres, 0.05f)
+        assertEquals("1m", NearbyRadarMath.metreText(blips[0].metres))
 
         // Without the hook the shared default still decides, exactly as before: only the
         // -85 dBm device was inside 10 m back then.

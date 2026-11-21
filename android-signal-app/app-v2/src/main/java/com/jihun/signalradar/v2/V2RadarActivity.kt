@@ -65,12 +65,15 @@ import kotlin.math.roundToInt
  *  - The distance pill on a row is its own tap target: it flips the switch, while the rest of
  *    the row still opens the finder.
  *
- * v2.8 (지훈: "전파 2.7 거리가 너무 안 맞아" → "멀어"): every distance on this screen — the
- * list rows, the top card, the finder's step word and 📏 예상 line, the detail card and the
- * 10 m radar's dots — now comes from [V2Calibration]'s tuned indoor model (-67 dBm at 1 m,
- * n = 3.1, advertised 1 m values believed only in -78…-48 dBm) instead of the free-space one,
- * so a device on the desk no longer reads as several metres away. There is no switch for it:
+ * v2.9 (지훈's own measurement: a tablet 0.8–1 m away read -86 dBm · 약 4.1m): every distance on
+ * this screen — the list rows, the top card, the finder's step word and 📏 예상 line, the
+ * detail card and the 10 m radar's dots — comes from [V2Calibration]'s measured model
+ * (-85 dBm at 1 m, n = 3.0, advertised 1 m values believed only in -78…-48 dBm and put on the
+ * same -85 scale), so that tablet now reads `가까움 · 약 1.1m`. There is no switch for it:
  * this is simply how far things say they are.
+ *
+ * v2.8 (지훈: "전파 2.7 거리가 너무 안 맞아" → "멀어") first moved the estimate off the
+ * free-space numbers; v2.9 moved it again, onto his measured level.
  */
 class V2RadarActivity : SignalRadarActivity() {
 
@@ -1182,12 +1185,14 @@ class V2RadarActivity : SignalRadarActivity() {
 
     /** The pulse a preview paints for a band, so a screenshot shows real numbers. */
     private fun previewPulse(band: Int): OrbPulse? {
+        // One level per band on the v2.9 measured scale (v2.9 moved every threshold 18 dB down,
+        // so these levels have to move with them or the button shows the wrong band).
         val level = when (band) {
-            1 -> -88f
-            2 -> -80f
-            3 -> -70f
-            4 -> -62f
-            5 -> -46f
+            1 -> -106f
+            2 -> -98f
+            3 -> -88f
+            4 -> -80f
+            5 -> -66f
             else -> return null
         }
         return OrbHapticsMap.pulseFor(level)

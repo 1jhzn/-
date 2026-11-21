@@ -113,7 +113,7 @@ class V2UiTest {
     // ------------------------------------------------------------- app identity
 
     @Test
-    fun it_is_a_separate_app_named_전파_with_its_own_package_name_and_the_28_version() {
+    fun it_is_a_separate_app_named_전파_with_its_own_package_name_and_the_29_version() {
         val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
         val activity = controller.get()
         assertEquals("com.jihun.signalradar.v2", activity.packageName)
@@ -124,8 +124,8 @@ class V2UiTest {
         assertEquals("전파", title.text.toString())
 
         val info = activity.packageManager.getPackageInfo(activity.packageName, 0)
-        assertEquals("2.8", info.versionName)
-        assertEquals(9, info.versionCode)
+        assertEquals("2.9", info.versionName)
+        assertEquals(10, info.versionCode)
         controller.pause().stop().destroy()
     }
 
@@ -408,9 +408,9 @@ class V2UiTest {
             }
         }
 
-        // -95 dBm with a -52 dBm advertisement is about 13 m indoors: 멀어요, not 아주 멀어요.
+        // -95 dBm with a -52 dBm advertisement is 3.7 m on the measured scale: 보통.
         val second = list.getChildAt(1).findViewById<TextView>(R.id.itemDistance)
-        assertEquals("멀어요", second.text.toString())
+        assertEquals("보통", second.text.toString())
     }
 
     @Test
@@ -728,8 +728,8 @@ class V2UiTest {
         repoOf(activity).upsert(
             listOf(
                 bleSignal(
-                    rssi = -95,
-                    smoothed = -95f,
+                    rssi = -112,
+                    smoothed = -112f,
                     address = "02:00:00:00:00:99",
                     title = "멀리 있는 기기"
                 )
@@ -739,7 +739,7 @@ class V2UiTest {
         activity.findViewById<View>(R.id.v2Callout).performClick()
         refresh()
 
-        // -95 dBm is out of reach: the switch is on, but nothing buzzes.
+        // -112 dBm is out of reach (v2.9: silence below -110): the switch is on, nothing buzzes.
         assertEquals("📳 진동", activity.findViewById<TextView>(R.id.orbVibrate).text.toString())
         assertEquals(0, activity.orbHapticsForTest()?.band)
         assertEquals(0, activity.orbHapticsForTest()?.taps)
@@ -846,7 +846,7 @@ class V2UiTest {
             dialog.findViewById<TextView>(R.id.licenseTitle).text.toString()
         )
         // 앱 이름 · 버전 · 제작자 — the version comes from the package that is running.
-        assertEquals("전파 v2.8", dialog.findViewById<TextView>(R.id.licenseApp).text.toString())
+        assertEquals("전파 v2.9", dialog.findViewById<TextView>(R.id.licenseApp).text.toString())
         val copyright = dialog.findViewById<TextView>(R.id.licenseCopyright).text.toString()
         assertEquals("Copyright © 2026 이지훈 (@1jhzn)", copyright)
         assertTrue(copyright.contains("이지훈") && copyright.contains("1jhzn") && copyright.contains("2026"))
@@ -893,7 +893,7 @@ class V2UiTest {
         button.performClick()
         val dialog = ShadowDialog.getLatestDialog()
         assertNotNull("기준 탭의 라이선스 버튼도 같은 카드를 열어야 합니다", dialog)
-        assertEquals("전파 v2.8", dialog.findViewById<TextView>(R.id.licenseApp).text.toString())
+        assertEquals("전파 v2.9", dialog.findViewById<TextView>(R.id.licenseApp).text.toString())
         dialog.dismiss()
         controller.pause().stop().destroy()
     }

@@ -206,10 +206,12 @@ object Classifier {
      * One set of knobs for the Bluetooth distance estimate, so a caller can use its own
      * room measurements without moving the defaults the older screens and their tests rely on.
      *
-     * [txPowerIndoorDropDb] is the level a room takes away at 1 m (walls, furniture, the phone's
-     * own case and the hand holding it). A device that advertises its free-space 1 m power gets
-     * the same drop taken off, so a "−52 dBm at 1 m" advertisement and the room reference land on
-     * one model instead of two scales.
+     * [txPowerIndoorDropDb] is how far the room scale sits below a device's own advertised
+     * free-space 1 m value (walls, furniture, the phone's own case and the hand holding it).
+     * A device that advertises its free-space 1 m power gets the same offset taken off, so a
+     * "−59 dBm at 1 m" advertisement and the room reference land on one model instead of two
+     * scales. v2.8 used 8 dB for its -67 dBm scale; v2.9 uses 26 dB for 지훈's measured
+     * -85 dBm scale, which is the same anchor (−59 − 26 = −85).
      */
     data class DistanceTuning(
         val bleReference1m: Double = BLE_REF_1M,
@@ -223,26 +225,30 @@ object Classifier {
     }
 
     /**
-     * v2.8 (지훈: "전파 2.7 거리가 너무 안 맞아" → "멀어"): the levels an Android phone really
-     * sees in a room, not the free-space textbook ones.
+     * v2.9 (지훈's own measurement): the level his phone really shows for a device he can reach.
      *
-     *  - `-67 dBm` at 1 m instead of `-59`. A phone's antenna, the hand around it and the room
-     *    eat about 8 dB before the signal has gone anywhere, so a device on the same desk reads
-     *    around -45…-60, and the old reference reported that as several metres.
-     *  - `n = 3.1` instead of 2.8: indoor walls and bodies make the level fall faster with
-     *    distance, so the same dB spread must not be spread over as many metres.
-     *  - An advertised 1 m value is only believed in `-78…-48 dBm`. Devices that put their own
-     *    antenna output in that field (0 m values like -30…-45, or +12) were read as "very weak
-     *    at 1 m" and pushed metres past the real distance.
+     * He put a Galaxy tablet on the desk, about 0.8–1 m away, and the v2.8 finder wrote
+     * `-86 dBm · 보통 · 약 4.1m`. So in *his* room 1 m is `-85 dBm`, not `-67`:
      *
-     * The same 8 dB is taken off an advertised 1 m value ([DistanceTuning]), so both paths agree.
+     *  - `-85 dBm` at 1 m (the measured level, one dB above the 0.8–1 m reading he sent).
+     *  - `n = 3.0`: indoor walls and bodies make the level fall about 30 dB per tenfold distance,
+     *    so `-86` lands at ~1.1 m, `-92` at ~1.7 m, `-98` at ~2.7 m.
+     *  - An advertised 1 m value is still only believed in `-78…-48 dBm`: devices that put their
+     *    own antenna output in that field (0 m values like -30…-45, or +12) are not 1 m levels.
+     *  - `txPowerIndoorDropDb = 26.0` keeps the two paths on this one scale. A device advertising
+     *    the usual `-59 dBm` at 1 m is the same device the room sees at `-85` (−59 − 26); without
+     *    that offset an advertised value would still be read on the old free-space scale and
+     *    land metres away from the room reading next to it.
+     *
+     * Every v2 screen reads this one tuning, so the list, the top card, the finder, the detail
+     * card and the 10 m radar cannot disagree.
      */
     val INDOOR_BLE = DistanceTuning(
-        bleReference1m = -67.0,
-        bleExponent = 3.1,
+        bleReference1m = -85.0,
+        bleExponent = 3.0,
         txPowerMin = -78,
         txPowerMax = -48,
-        txPowerIndoorDropDb = 8.0
+        txPowerIndoorDropDb = 26.0
     )
 
     /** Level a Wi-Fi router of this band should produce at 1 m. */

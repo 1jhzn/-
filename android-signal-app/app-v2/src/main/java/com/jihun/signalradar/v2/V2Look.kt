@@ -1,7 +1,6 @@
 package com.jihun.signalradar.v2
 
 import com.jihun.signalradar.R
-import com.jihun.signalradar.identify.Classifier
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
 
@@ -45,13 +44,8 @@ object V2Look {
         SignalSource.CELL -> R.drawable.bg_v2_icon_cell
     }
 
-    /** The distance step of a signal, or null for a base station. */
-    fun stepOf(signal: Signal): String? = Classifier.distanceStepLabel(
-        signal.smoothedRssi ?: signal.rssi.toFloat(),
-        signal.source,
-        signal.txPower,
-        signal.frequencyMhz
-    )
+    /** The distance step of a signal, or null for a base station. v2.8: the tuned indoor model. */
+    fun stepOf(signal: Signal): String? = V2Calibration.stepLabel(signal)
 
     /** `블루투스 · 애플` — the one line under a row's title. */
     fun summaryLine(signal: Signal): String {

@@ -12,6 +12,31 @@
 **`전파`**(`com.jihun.signalradar.v2`, v2.5부터의 이름)입니다. 패키지가 달라서 **지웠다 다시 깔 필요 없이
 나란히 설치**됩니다. v2는 기존 앱을 덮어쓰는 업데이트가 아니라 **새 파일로 따로 설치되는 앱**입니다.
 
+## 전파 v2.8 (2026-11-21) — 실내 거리 보정
+
+`:app-v2` · `com.jihun.signalradar.v2` · versionCode **9** · versionName **"2.8"**.
+지훈 님 요청: **"전파 2.7 거리가 너무 안 맞아"** → **"멀어"** (실제보다 멀게 나옴).
+
+거리 계산은 이제 **실내 안드로이드 기준**으로 맞춰져 있고, 조절 버튼은 없습니다 — 이 값이 기본값입니다.
+
+- **`-67 dBm` 기준 (이전 `-59`)** — 폰 안테나·손·방·가구가 1 m에서 이미 8 dB쯤 먹기 때문에,
+  같은 책상 위 기기가 -50 dBm으로 잡힙니다. 예전 기준은 이걸 1.8 m로 적었습니다.
+- **`n = 3.1` (이전 2.8)** — 실내는 벽·사람 때문에 세기가 거리에 따라 더 빨리 떨어집니다.
+- **`isOneMetreTxPower` 범위 `-78…-48` dBm** — 0 m 출력값(-30~-45 dBm)을 "1 m에서 아주 약함"으로
+  잘못 읽어 거리가 몇 배로 튀던 문제를 막았습니다. 광고된 1 m 값에는 같은 8 dB 실내 손실을 빼서
+  기준값 경로와 한 척도로 맞췄습니다.
+- **한 곳에서 결정** — `V2Calibration.kt`(튜닝 상수는 `common`의 `Classifier.INDOOR_BLE`)를
+  목록 행·상단 카드·찾기(단계 단어와 `📏 예상`)·상세 카드·10 m 레이더가 모두 씁니다.
+  `NearbyRadarMath.nearbyBlips`에 `distanceOf` 훅을 두어 레이더 점 위치도 같은 값을 씁니다.
+- **같은 세기, 더 짧은 거리** — -70 dBm 2.5 m → **1.2 m**, -85 dBm 8.5 m → **3.8 m**,
+  -95 dBm 19 m → **8 m**(그래서 10 m 레이더에 다시 잡힙니다).
+- 기존 두 앱(`:app`·`:app-nearby`)의 거리 표기는 건드리지 않았습니다(`Classifier`의 기본값 유지).
+- 미리보기: `app-v2/build/previews/v28-distance-list.png`, `v28-distance-finder.png`.
+
+```bash
+./gradlew :app-v2:testDebugUnitTest :app-v2:lintDebug :app-v2:assembleDebug
+```
+
 ## 전파 v2.7 (2026-11-20) — 오픈소스 라이선스 + 스캔 상태 유지
 
 `:app-v2` · `com.jihun.signalradar.v2` · versionCode **8** · versionName **"2.7"**.

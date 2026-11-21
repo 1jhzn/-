@@ -276,6 +276,14 @@ abstract class SignalRadarActivity : AppCompatActivity() {
     protected open fun directionDistanceText(signal: Signal, rssi: Float): String? =
         Classifier.distanceLabel(rssi, signal.source, signal.txPower, signal.frequencyMhz)
 
+    /**
+     * Whether an advertised txPower counts as "how strong at 1 m" on this screen. The detail
+     * card words the line from this answer, so a screen that narrows the range (v2.8 believes
+     * only -78…-48) never prints "1m 기준" for a value its own arithmetic threw away.
+     */
+    protected open fun isOneMetreTxPower(txPower: Int?): Boolean =
+        Classifier.isOneMetreTxPower(txPower)
+
     /** The line under the detail title. */
     protected open fun detailSubtitle(signal: Signal): String = listOfNotNull(
         signal.source.label,
@@ -803,7 +811,7 @@ abstract class SignalRadarActivity : AppCompatActivity() {
         text.append('\n')
         signal.txPower?.let {
             text.append(
-                if (Classifier.isOneMetreTxPower(it)) {
+                if (isOneMetreTxPower(it)) {
                     "송신 세기(1m 기준): $it dBm\n"
                 } else {
                     // Apple and some chips advertise the antenna's output here (+12 dBm),

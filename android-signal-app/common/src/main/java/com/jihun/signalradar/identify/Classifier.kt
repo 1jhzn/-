@@ -187,18 +187,63 @@ object Classifier {
         rssi: Double,
         source: SignalSource,
         txPower: Int? = null,
-        frequencyMhz: Int? = null
+        frequencyMhz: Int? = null,
+        tuning: DistanceTuning = DEFAULT_TUNING
     ): Double? {
         val (reference, exponent) = when (source) {
             SignalSource.BLE ->
-                (txPower?.takeIf { isOneMetreTxPower(it) }?.toDouble() ?: BLE_REF_1M) to
-                    BLE_EXPONENT
+                (txPower?.takeIf { tuning.isOneMetreTxPower(it) }?.toDouble()
+                    ?.minus(tuning.txPowerIndoorDropDb) ?: tuning.bleReference1m) to
+                    tuning.bleExponent
             SignalSource.WIFI -> wifiReference(frequencyMhz) to WIFI_EXPONENT
             SignalSource.CELL -> return null
         }
         val metres = 10.0.pow((reference - rssi) / (10.0 * exponent))
         return metres.coerceIn(0.02, 500.0)
     }
+
+    /**
+     * One set of knobs for the Bluetooth distance estimate, so a caller can use its own
+     * room measurements without moving the defaults the older screens and their tests rely on.
+     *
+     * [txPowerIndoorDropDb] is the level a room takes away at 1 m (walls, furniture, the phone's
+     * own case and the hand holding it). A device that advertises its free-space 1 m power gets
+     * the same drop taken off, so a "−52 dBm at 1 m" advertisement and the room reference land on
+     * one model instead of two scales.
+     */
+    data class DistanceTuning(
+        val bleReference1m: Double = BLE_REF_1M,
+        val bleExponent: Double = BLE_EXPONENT,
+        val txPowerMin: Int = TX_POWER_MIN,
+        val txPowerMax: Int = TX_POWER_MAX,
+        val txPowerIndoorDropDb: Double = 0.0
+    ) {
+        fun isOneMetreTxPower(txPower: Int?): Boolean =
+            txPower != null && txPower in txPowerMin..txPowerMax
+    }
+
+    /**
+     * v2.8 (지훈: "전파 2.7 거리가 너무 안 맞아" → "멀어"): the levels an Android phone really
+     * sees in a room, not the free-space textbook ones.
+     *
+     *  - `-67 dBm` at 1 m instead of `-59`. A phone's antenna, the hand around it and the room
+     *    eat about 8 dB before the signal has gone anywhere, so a device on the same desk reads
+     *    around -45…-60, and the old reference reported that as several metres.
+     *  - `n = 3.1` instead of 2.8: indoor walls and bodies make the level fall faster with
+     *    distance, so the same dB spread must not be spread over as many metres.
+     *  - An advertised 1 m value is only believed in `-78…-48 dBm`. Devices that put their own
+     *    antenna output in that field (0 m values like -30…-45, or +12) were read as "very weak
+     *    at 1 m" and pushed metres past the real distance.
+     *
+     * The same 8 dB is taken off an advertised 1 m value ([DistanceTuning]), so both paths agree.
+     */
+    val INDOOR_BLE = DistanceTuning(
+        bleReference1m = -67.0,
+        bleExponent = 3.1,
+        txPowerMin = -78,
+        txPowerMax = -48,
+        txPowerIndoorDropDb = 8.0
+    )
 
     /** Level a Wi-Fi router of this band should produce at 1 m. */
     private fun wifiReference(frequencyMhz: Int?): Double = when {
@@ -218,16 +263,19 @@ object Classifier {
         rssi: Int,
         source: SignalSource,
         txPower: Int? = null,
-        frequencyMhz: Int? = null
-    ): String? = distanceLabel(rssi.toFloat(), source, txPower, frequencyMhz)
+        frequencyMhz: Int? = null,
+        tuning: DistanceTuning = DEFAULT_TUNING
+    ): String? = distanceLabel(rssi.toFloat(), source, txPower, frequencyMhz, tuning)
 
     fun distanceLabel(
         rssi: Float,
         source: SignalSource,
         txPower: Int? = null,
-        frequencyMhz: Int? = null
+        frequencyMhz: Int? = null,
+        tuning: DistanceTuning = DEFAULT_TUNING
     ): String? {
-        val metres = distanceMeters(rssi.toDouble(), source, txPower, frequencyMhz) ?: return null
+        val metres = distanceMeters(rssi.toDouble(), source, txPower, frequencyMhz, tuning)
+            ?: return null
         return when {
             metres < 0.5 -> "50cm 이내"
             metres < 10.0 -> "약 ${oneDecimal(metres)}m"
@@ -248,16 +296,19 @@ object Classifier {
         rssi: Int,
         source: SignalSource,
         txPower: Int? = null,
-        frequencyMhz: Int? = null
-    ): String? = distanceStepLabel(rssi.toFloat(), source, txPower, frequencyMhz)
+        frequencyMhz: Int? = null,
+        tuning: DistanceTuning = DEFAULT_TUNING
+    ): String? = distanceStepLabel(rssi.toFloat(), source, txPower, frequencyMhz, tuning)
 
     fun distanceStepLabel(
         rssi: Float,
         source: SignalSource,
         txPower: Int? = null,
-        frequencyMhz: Int? = null
+        frequencyMhz: Int? = null,
+        tuning: DistanceTuning = DEFAULT_TUNING
     ): String? {
-        val metres = distanceMeters(rssi.toDouble(), source, txPower, frequencyMhz) ?: return null
+        val metres = distanceMeters(rssi.toDouble(), source, txPower, frequencyMhz, tuning)
+            ?: return null
         return distanceStep(metres)
     }
 
@@ -302,6 +353,8 @@ object Classifier {
         val ratio = (rssi - weak).toFloat() / (strong - weak).toFloat()
         return (ratio.coerceIn(0f, 1f) * 100f).toInt()
     }
+
+    private val DEFAULT_TUNING = DistanceTuning()
 
     private const val BLE_REF_1M = -59.0
 

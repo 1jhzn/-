@@ -46,19 +46,24 @@ object NearbyRadarMath {
      *
      * Base stations are left out: their signal level says nothing about how far away the
      * tower is. [bearingOf] returns the direction measured for a signal id, or null when it
-     * has not been measured yet.
+     * has not been measured yet. [distanceOf] lets a screen use its own tuned estimate (the
+     * v2 app's indoor one) while every other caller keeps the shared default.
      */
-    fun nearbyBlips(signals: List<Signal>, bearingOf: (String) -> Float?): List<NearbyBlip> {
+    fun nearbyBlips(
+        signals: List<Signal>,
+        distanceOf: ((Signal) -> Double?)? = null,
+        bearingOf: (String) -> Float?
+    ): List<NearbyBlip> {
         val blips = ArrayList<NearbyBlip>(signals.size)
         for (signal in signals) {
             if (signal.source == SignalSource.CELL) continue
             val level = signal.smoothedRssi ?: signal.rssi.toFloat()
-            val metres = Classifier.distanceMeters(
+            val metres = (distanceOf?.invoke(signal) ?: Classifier.distanceMeters(
                 level.toDouble(),
                 signal.source,
                 signal.txPower,
                 signal.frequencyMhz
-            ) ?: continue
+            )) ?: continue
             if (metres > LIMIT_METRES) continue
             blips.add(NearbyBlip(signal, metres.toFloat(), bearingOf(signal.id)))
         }

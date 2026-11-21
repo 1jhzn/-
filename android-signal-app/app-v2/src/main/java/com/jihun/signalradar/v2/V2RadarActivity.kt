@@ -20,7 +20,6 @@ import com.jihun.signalradar.R
 import com.jihun.signalradar.SignalRadarActivity
 import com.jihun.signalradar.direction.Compass
 import com.jihun.signalradar.direction.SignalDirectionTracker
-import com.jihun.signalradar.identify.Classifier
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
 import com.jihun.signalradar.nearby.NearbyRadarMath
@@ -65,6 +64,13 @@ import kotlin.math.roundToInt
  *    clean row of step words until it is pressed.
  *  - The distance pill on a row is its own tap target: it flips the switch, while the rest of
  *    the row still opens the finder.
+ *
+ * v2.8 (지훈: "전파 2.7 거리가 너무 안 맞아" → "멀어"): every distance on this screen — the
+ * list rows, the top card, the finder's step word and 📏 예상 line, the detail card and the
+ * 10 m radar's dots — now comes from [V2Calibration]'s tuned indoor model (-67 dBm at 1 m,
+ * n = 3.1, advertised 1 m values believed only in -78…-48 dBm) instead of the free-space one,
+ * so a device on the desk no longer reads as several metres away. There is no switch for it:
+ * this is simply how far things say they are.
  */
 class V2RadarActivity : SignalRadarActivity() {
 
@@ -462,7 +468,11 @@ class V2RadarActivity : SignalRadarActivity() {
         nearest = nearestOf(visible)
         renderCallout(nearest)
 
-        val blips = NearbyRadarMath.nearbyBlips(all) { id -> repo.bearing(id) }
+        val blips = NearbyRadarMath.nearbyBlips(
+            all,
+            { signal -> V2Calibration.metres(signal) },
+            { id -> repo.bearing(id) }
+        )
         val nearKey = blips.joinToString("|") { "${it.signal.id}:${it.signal.rssi}:${it.metres}:${it.bearing}" }
         if (nearKey != nearbyKey) {
             nearbyKey = nearKey
@@ -960,7 +970,15 @@ class V2RadarActivity : SignalRadarActivity() {
     override fun distanceTextFor(signal: Signal): String? = V2Distance.badge(signal, distanceOn)
 
     override fun directionDistanceText(signal: Signal, rssi: Float): String? =
-        Classifier.distanceStepLabel(rssi, signal.source, signal.txPower, signal.frequencyMhz)
+        V2Calibration.stepLabel(rssi, signal)
+
+    /**
+     * v2.8: the detail card may only call a txPower "1m 기준" when it is in the range the v2.8
+     * arithmetic actually believes (`-78…-48`), so the card never names a value the metres
+     * beside it ignored.
+     */
+    override fun isOneMetreTxPower(txPower: Int?): Boolean =
+        V2Calibration.isOneMetreTxPower(txPower)
 
     override fun detailSubtitle(signal: Signal): String = V2Look.summaryLine(signal)
 
@@ -1065,9 +1083,7 @@ class V2RadarActivity : SignalRadarActivity() {
         val now = System.currentTimeMillis()
         val heading = readHeading()
 
-        val stepOf: (Int) -> String? = { rssi ->
-            Classifier.distanceStepLabel(rssi, live.source, live.txPower, live.frequencyMhz)
-        }
+        val stepOf: (Int) -> String? = { rssi -> V2Calibration.stepLabel(rssi, live) }
         if (live.lastSeen != lastOrbSeen || live.rssi != lastOrbRssi) {
             lastOrbSeen = live.lastSeen
             lastOrbRssi = live.rssi

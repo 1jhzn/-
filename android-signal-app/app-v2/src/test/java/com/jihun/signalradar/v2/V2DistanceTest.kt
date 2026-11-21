@@ -131,10 +131,10 @@ class V2DistanceTest {
 
         val row = firstRow(activity)
         val badge = row.findViewById<TextView>(R.id.itemDistance)
-        assertEquals("가까움", badge.text.toString())
+        assertEquals("매우 가까움", badge.text.toString())
         assertFalse("a step only, no metres", badge.text.contains("m"))
         assertEquals(
-            "가까움",
+            "매우 가까움",
             activity.findViewById<TextView>(R.id.v2CalloutStep).text.toString()
         )
         controller.pause().stop().destroy()
@@ -160,9 +160,9 @@ class V2DistanceTest {
 
         // The row's badge and the top card both carry the estimate.
         val badge = firstRow(activity).findViewById<TextView>(R.id.itemDistance)
-        assertEquals("가까움 · 약 1.8m", badge.text.toString())
+        assertEquals("매우 가까움 · 약 0.9m", badge.text.toString())
         assertEquals(
-            "가까움 · 약 1.8m",
+            "매우 가까움 · 약 0.9m",
             activity.findViewById<TextView>(R.id.v2CalloutStep).text.toString()
         )
 
@@ -171,7 +171,7 @@ class V2DistanceTest {
         refresh()
         assertFalse(V2Distance.isOn(prefs(activity)))
         assertEquals(
-            "가까움",
+            "매우 가까움",
             firstRow(activity).findViewById<TextView>(R.id.itemDistance).text.toString()
         )
         assertEquals(
@@ -189,11 +189,12 @@ class V2DistanceTest {
             "매우 가까움 · 50cm 이내",
             V2Distance.badge(bleSignal(rssi = -40), true)
         )
-        // Metres with one decimal, and whole metres further out.
-        assertEquals("가까움 · 약 1.8m", V2Distance.badge(bleSignal(rssi = -59), true))
-        assertEquals("보통 · 약 5.2m", V2Distance.badge(bleSignal(rssi = -72), true))
+        // v2.8: the tuned indoor model writes a shorter distance than the old free-space one —
+        // -59 dBm from a device advertising -52 dBm at 1 m is now under a metre, not 1.8 m.
+        assertEquals("매우 가까움 · 약 0.9m", V2Distance.badge(bleSignal(rssi = -59), true))
+        assertEquals("가까움 · 약 2.4m", V2Distance.badge(bleSignal(rssi = -72), true))
         // Off is the step word alone, exactly as v2.3 wrote it.
-        assertEquals("보통", V2Distance.badge(bleSignal(rssi = -72), false))
+        assertEquals("가까움", V2Distance.badge(bleSignal(rssi = -72), false))
         // A base station has no distance worth writing, so no badge and no estimate.
         val cell = bleSignal().copy(source = SignalSource.CELL, address = "1234")
         assertEquals(null, V2Distance.badge(cell, true))
@@ -219,7 +220,7 @@ class V2DistanceTest {
         refresh()
         assertTrue(V2Distance.isOn(prefs(again)))
         assertEquals(
-            "가까움 · 약 1.8m",
+            "매우 가까움 · 약 0.9m",
             firstRow(again).findViewById<TextView>(R.id.itemDistance).text.toString()
         )
         second.pause().stop().destroy()
@@ -277,10 +278,13 @@ class V2DistanceTest {
         val line = activity.findViewById<TextView>(R.id.orbDistance)
         assertEquals(View.VISIBLE, line.visibility)
         assertEquals(
-            "📏 예상 " + Classifier.distanceLabel(-44, SignalSource.BLE, -52, null),
+            "📏 예상 " + V2Calibration.metresText(bleSignal(rssi = -44)),
             line.text.toString()
         )
-        assertTrue("the finder must say a number, not the step again", line.text.contains("📏 예상 약"))
+        assertTrue(
+            "the finder must say a number, not the step again",
+            line.text.toString().startsWith("📏 예상 ") && !line.text.contains("매우 가까움")
+        )
 
         // Pressing it again hides the line and keeps the switch off in the saved setting.
         toggle.performClick()
@@ -306,7 +310,7 @@ class V2DistanceTest {
         assertEquals(V2RadarActivity.DETAIL_DISTANCE_SHOW, toggle.text.toString())
         assertTrue(
             dialog.findViewById<TextView>(R.id.detailBody).text
-                .contains("대략 거리: 가까움")
+                .contains("대략 거리: 매우 가까움")
         )
 
         // The card's pill turns it on, and the card comes back with the number written in.
@@ -320,7 +324,7 @@ class V2DistanceTest {
             reopened.findViewById<TextView>(R.id.detailDistanceToggle).text.toString()
         )
         val body = reopened.findViewById<TextView>(R.id.detailBody).text.toString()
-        assertTrue(body, body.contains("대략 거리: 가까움 · 약 1.8m"))
+        assertTrue(body, body.contains("대략 거리: 매우 가까움 · 약 0.9m"))
         assertTrue("the card must say it is an estimate", body.contains("어림값"))
         reopened.dismiss()
         controller.pause().stop().destroy()

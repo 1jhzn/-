@@ -9,6 +9,7 @@ import android.widget.TextView
 import com.jihun.signalradar.R
 import com.jihun.signalradar.SignalRadarActivity
 import com.jihun.signalradar.SignalRepository
+import com.jihun.signalradar.identify.Classifier
 import com.jihun.signalradar.model.Signal
 import com.jihun.signalradar.model.SignalSource
 import org.junit.Assert.assertEquals
@@ -41,7 +42,7 @@ import java.util.concurrent.TimeUnit
  * v2.4 (지훈: "거리도 버튼을 누르면 예상을 볼수있게"):
  *
  *  - `v24-distance-on.png`   — the main screen with `📏 예상 거리` pressed: the top card and
- *                              every row write the estimate beside the step (`매우 가까움 · 약 0.7m`)
+ *                              every row write the estimate beside the step (`매우 가까움 · 50cm 이내`)
  *  - `v24-orb-distance.png`  — the finder showing `📏 예상 50cm 이내` under the step word
  *
  * v2.5 — `v25-home-title.png` (the header reads 전파).
@@ -53,6 +54,12 @@ import java.util.concurrent.TimeUnit
  * v2.7 (지훈: "오픈소스라이선스로 해줄수있어?"):
  *
  *  - `v27-license-dialog.png` — the 📄 오픈소스 라이선스 card
+ *
+ * v2.8 (지훈: "전파 2.7 거리가 너무 안 맞아" → "멀어"):
+ *
+ *  - `v28-distance-list.png`   — the list with 📏 on, every row writing the tuned indoor
+ *                                estimate (`매우 가까움 · 50cm 이내` instead of `약 1.8m`)
+ *  - `v28-distance-finder.png` — the finder's 📏 예상 line with the same tuned number
  *
  * Each also asserts it produced a real PNG, so a normal test run keeps them up to date.
  */
@@ -301,6 +308,64 @@ class V2PreviewTest {
     }
 
     /**
+     * v2.8 (지훈: "전파 2.7 거리가 너무 안 맞아" → "멀어"): the brief's screenshot — the real
+     * list with `📏 예상 거리` on, so every row writes the tuned indoor estimate beside its step
+     * (the earbuds on the desk read `매우 가까움 · 50cm 이내`, not `약 1.8m`).
+     */
+    @Test
+    fun render_the_v28_indoor_distance_on_the_list() {
+        grantScanPermissions()
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        repoOf(activity).upsert(samples())
+        refresh()
+        activity.findViewById<View>(R.id.chipDistance).performClick()
+        refresh()
+        capture(activity, "v28-distance-list.png", 1233, 2673)
+
+        // The top card and the first row carry the tuned estimate, and it is shorter than the
+        // free-space number v2.7 wrote for the same level.
+        val callout = activity.findViewById<TextView>(R.id.v2CalloutStep).text.toString()
+        assertTrue("the top card must carry the estimate: $callout", callout.contains(" · "))
+        val row = activity.findViewById<androidx.recyclerview.widget.RecyclerView>(
+            R.id.v2SignalList
+        ).getChildAt(0)
+        val badge = row.findViewById<TextView>(R.id.itemDistance).text.toString()
+        assertTrue("the row must carry the estimate: $badge", badge.contains(" · "))
+        val before = Classifier.distanceLabel(-48, SignalSource.BLE, -52, null) ?: ""
+        assertTrue(
+            "v2.8 ($badge) must be shorter than v2.7 ($before)",
+            badge.substringAfter(" · ") != before && badge.contains("50cm")
+        )
+        controller.pause().stop().destroy()
+    }
+
+    /** The same tuned number inside the finder: `📏 예상 약 2.4m` under the step word. */
+    @Test
+    fun render_the_v28_indoor_distance_in_the_finder() {
+        val controller = Robolectric.buildActivity(V2RadarActivity::class.java).setup()
+        val activity = controller.get()
+        val target = samples().drop(2).first()   // 민수의 Galaxy Buds, -74 dBm
+        val metres = V2Calibration.metresText(target)
+        activity.findViewById<View>(R.id.chipDistance).performClick()
+        activity.previewOrb(
+            signal = target,
+            step = V2Calibration.stepLabel(target) ?: "가까움",
+            emerald = 0f,
+            scale = 0.55f,
+            heading = 150f,
+            peak = 150f,
+            metres = metres
+        )
+        capture(activity, "v28-distance-finder.png", 1233, 2673)
+        assertEquals(
+            "📏 예상 $metres",
+            activity.findViewById<TextView>(R.id.orbDistance).text.toString()
+        )
+        controller.pause().stop().destroy()
+    }
+
+    /**
      * v2.6 (지훈: "방향다시 위치와 기기상세위치 바꿔줘"): the finder's bottom row from left to
      * right is 방향 다시 — 기기 상세 — 📏 예상 거리. This is the screenshot the brief asks for.
      */
@@ -355,7 +420,7 @@ class V2PreviewTest {
         renderDialog(dialog, "v27-license-dialog.png")
 
         // The card must actually show the four things it exists for, not just be a panel.
-        assertEquals("전파 v2.7", dialog.findViewById<TextView>(R.id.licenseApp).text.toString())
+        assertEquals("전파 v2.8", dialog.findViewById<TextView>(R.id.licenseApp).text.toString())
         assertEquals(
             "Copyright © 2026 이지훈 (@1jhzn)",
             dialog.findViewById<TextView>(R.id.licenseCopyright).text.toString()
@@ -528,7 +593,7 @@ class V2PreviewTest {
         renderDialog(dialog, "v24-detail-distance.png")
         assertTrue(
             dialog.findViewById<TextView>(R.id.detailBody).text
-                .contains("대략 거리: 매우 가까움 · 약 0.7m")
+                .contains("대략 거리: 매우 가까움 · 50cm 이내")
         )
         dialog.dismiss()
         controller.pause().stop().destroy()
